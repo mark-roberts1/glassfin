@@ -218,8 +218,12 @@ void InputComponent::remapInput(const QString &source, const QString &keycode, I
         queuedActions.append(map.value("short").toString());
       }
     }
-    else if (action.typeId() == QMetaType::QStringList)
+    else if (action.typeId() == QMetaType::QStringList || action.typeId() == QMetaType::QVariantList)
     {
+      // A JSON array mapping value (e.g. keyboard.json's "Space") parses to
+      // QVariantList, not QStringList — toStringList() converts either, but
+      // the old check only recognised the latter, so an array-valued mapping
+      // silently produced no action at all. This is that key's only handler.
       queuedActions.append(action.toStringList());
     }
   }

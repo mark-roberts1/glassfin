@@ -8,18 +8,42 @@
    * touch remote and miserable with a D-pad. Six columns keeps the worst
    * case to about seven presses in each direction.
    *
-   * Characters are uppercase because the shell cannot report case anyway; see
-   * the note in host.ts.
+   * Letters are typed lowercase, matching an unshifted physical key, and
+   * Shift is sticky rather than momentary — a D-pad has no second hand to
+   * hold a modifier with, so it toggles case instead of applying to just the
+   * next key. A physical keyboard genuinely cannot report case here (see the
+   * note in host.ts), but this is a synthetic keyboard: nothing stops it from
+   * inserting whichever case its own Shift key is showing.
    */
-  const KEYS = [
+  const LETTERS = [
     ['A', 'B', 'C', 'D', 'E', 'F'],
     ['G', 'H', 'I', 'J', 'K', 'L'],
     ['M', 'N', 'O', 'P', 'Q', 'R'],
     ['S', 'T', 'U', 'V', 'W', 'X'],
-    ['Y', 'Z', '0', '1', '2', '3'],
-    ['4', '5', '6', '7', '8', '9'],
-    ['.', ':', '-', '_', '@', '/']
+    ['Y', 'Z']
   ];
+
+  /** Digits and symbols, behind their own key — a password field needs more
+   *  than the half-dozen that used to share the letter grid. */
+  const SYMBOLS = [
+    ['0', '1', '2', '3', '4', '5'],
+    ['6', '7', '8', '9', '!', '@'],
+    ['#', '$', '%', '^', '&', '*'],
+    ['(', ')', '-', '_', '=', '+'],
+    ['[', ']', '{', '}', ';', ':'],
+    ["'", '"', ',', '.', '<', '>'],
+    ['/', '?', '~', '`', '\\', '|']
+  ];
+
+  let page = $state<'letters' | 'symbols'>('letters');
+  let shift = $state(false);
+
+  const rows = $derived(page === 'letters' ? LETTERS : SYMBOLS);
+
+  /** What a key actually types — lowercase unless Shift is on; symbols are unaffected. */
+  function typed(key: string): string {
+    return page === 'letters' && !shift ? key.toLowerCase() : key;
+  }
 
   const field = $derived(textEntry.current);
   const shown = $derived(field?.value ?? '');
@@ -54,16 +78,39 @@
     </div>
 
     <div class="keys">
-      {#each KEYS as row}
+      {#each rows as row}
         {#each row as key}
           <button
             class="key focusable"
-            use:focusable={{ group: 'osk', priority: 1, onSelect: () => textEntry.insert(key) }}
+            use:focusable={{ group: 'osk', priority: 1, onSelect: () => textEntry.insert(typed(key)) }}
           >
-            {key}
+            {typed(key)}
           </button>
         {/each}
       {/each}
+
+      {#if page === 'letters'}
+        <button
+          class="key wide-key focusable"
+          class:active={shift}
+          use:focusable={{ group: 'osk', onSelect: () => (shift = !shift) }}
+        >
+          Shift
+        </button>
+        <button
+          class="key wide-key focusable"
+          use:focusable={{ group: 'osk', onSelect: () => (page = 'symbols') }}
+        >
+          123
+        </button>
+      {:else}
+        <button
+          class="key wide-key focusable"
+          use:focusable={{ group: 'osk', onSelect: () => (page = 'letters') }}
+        >
+          ABC
+        </button>
+      {/if}
     </div>
 
     <div class="controls">
@@ -177,6 +224,21 @@
   .key {
     width: 3.6rem;
     text-align: center;
+  }
+
+  .wide-key {
+    /* Sits in the same grid as the single-character keys, but Shift/123/ABC
+       need room for a word, not a glyph — spans two columns rather than
+       carrying its own fixed width like the modal-only .wide does. */
+    width: auto;
+    grid-column: span 2;
+    font-size: 0.85rem;
+  }
+
+  .key.active {
+    color: var(--ground);
+    background: var(--accent);
+    border-color: var(--accent);
   }
 
   .wide {

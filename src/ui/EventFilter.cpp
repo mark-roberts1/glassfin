@@ -58,6 +58,22 @@ static QString keyEventToKeyString(QKeyEvent *kevent)
     }
   }
 
+  // `key` above comes from the *key code* (Qt::Key_A), which has no concept
+  // of case or of what a shifted key actually produces — it names the A key,
+  // not the letter "a" or "A". That is fine for shortcuts (Ctrl+A should fire
+  // the same whether or not Shift is also down), but wrong for anything meant
+  // to be typed: it is why this used to report every letter as uppercase, and
+  // why Shift+1 could never produce "!". `key.size() == 1` singles out plain,
+  // unnamed printable keys — Space/Return/Escape/arrows etc. all resolve to
+  // multi-character names above and never reach this branch — and for those,
+  // with no Ctrl/Alt/Meta held, kevent->text() is the engine's own resolved
+  // character and already reflects Shift correctly, so it replaces `key`
+  // outright rather than being appended after a "Shift+" that would just be
+  // redundant with it.
+  Qt::KeyboardModifiers significant = kevent->modifiers() & ~Qt::ShiftModifier & ~Qt::KeypadModifier;
+  if (significant == Qt::NoModifier && key.size() == 1 && kevent->text().size() == 1)
+    return kevent->text();
+
   return modifiers.toString() + key;
 }
 
@@ -188,13 +204,13 @@ bool EventFilter::eventFilter(QObject* watched, QEvent* event)
       // to distinguish them from normal key presses)
       if (kevent->text().size())
       {
-        if (m_currentKeyDown)
+        if (m_keysDown.contains(kevent->key()))
           return true;
-        m_currentKeyDown = true;
+        m_keysDown.insert(kevent->key());
       }
     }
     else
-      m_currentKeyDown = false;
+      m_keysDown.remove(kevent->key());
 
     if (kevent->spontaneous() && !kevent->isAutoRepeat())
     {

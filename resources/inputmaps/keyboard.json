@@ -14,29 +14,35 @@
       "long": "exit"
     },
 
-    // map X and Shift+X to X. This allows normal number input
-    "(?:Shift\\+)?([0-9])": "%1",
+    // Plain digits. EventFilter now reports a shifted digit as whatever
+    // symbol it actually produces (Shift+1 is "!", not "1"), so this only
+    // ever sees the unshifted key.
+    "([0-9])": "%1",
 
-    // map X and Shift+X to X for letters, space to space. This allows normal text input
-    "(?:Shift\\+)?([A-Z])": "%1",
+    // Letters, in whichever case was actually typed — EventFilter resolves
+    // this from the key event's own text now, not from the key code, which
+    // has no concept of case at all. Space is its own named key, not a
+    // printable character as far as the key-code path is concerned.
+    "([A-Za-z])": "%1",
     "Space": ["space", "play_pause"],
 
-    // map some other normal buttons that might be useful
-    "(?:Shift\\+)?(\\.|\\:|\\_)": "%1",
+    // The rest of a standard keyboard's printable symbols, for anything
+    // typed rather than pressed as a shortcut — a password is the case that
+    // matters most. Backslash is left out: it is claimed below as a PHT-style
+    // fullscreen toggle, and typing one would fight that. "=", "+" and "-"
+    // are handled separately, just below, since they also drive volume.
+    "([.:_,;'\"<>?~`!#$%^&*()[\\]{}@/])": "%1",
 
-    // map Shift+Letter to action jump+letter
-    "Shift\\+([A-Z])": "jump+%1",
-
-    "P": "play_pause",
+    "[Pp]": "play_pause",
     "Ctrl\\+P": "pause",
-    "X": "stop",
-    "B": "back",
-    "H": "home",
-    "A": "cycle_audio",
+    "[Xx]": "stop",
+    "[Bb]": "back",
+    "[Hh]": "home",
+    "[Aa]": "cycle_audio",
     "Ctrl\\+A": "cycle_audio_back",
-    "L": "cycle_subtitles",
+    "[Ll]": "cycle_subtitles",
     "Ctrl\\+L": "cycle_subtitles_back",
-    "S": "toggle_subtitles",
+    "[Ss]": "toggle_subtitles",
     "Alt\\+A": "increase_audio_delay",
     "Alt\\+Shift\\+A": "decrease_audio_delay",
     "Alt\\+S": "increase_subtitles_delay",
@@ -62,11 +68,11 @@
     "Ctrl\\+Shift\\+A": "host:cycle_setting main.alwaysOnTop",
 
     // emulate some of of PHT's behaviour
-    "I": "host:toggleDebug",
-    "W": "toggle_watched",
+    "[Ii]": "host:toggleDebug",
+    "[Ww]": "toggle_watched",
     "\\\\": "host:fullscreen",
-    "Z": "host:cycle_setting video.aspect",
-    "T": "host:cycle_setting main.alwaysOnTop",
+    "[Zz]": "host:cycle_setting video.aspect",
+    "[Tt]": "host:cycle_setting main.alwaysOnTop",
 
     // media keys from the FLIRC and on Linux keyboards
     "Toggle Media Play\\/Pause": "play_pause",
@@ -90,10 +96,12 @@
     "Ctrl\\+B": "step_backward",
     "Ctrl\\+G": "step_forward",
 
-    // volume
-    "=": "increase_volume",
-    "(Shift\\+)?\\+": "increase_volume",
-    "\\-": "decrease_volume",
+    // volume, but also typeable now that EventFilter can tell "=" and
+    // Shift+"=" (i.e. "+") apart — see the array-value fix in
+    // InputComponent::remapInput this depends on.
+    "=": ["=", "increase_volume"],
+    "\\+": ["+", "increase_volume"],
+    "\\-": ["-", "decrease_volume"],
 
     // debug command to crash the host. for testing
     "Ctrl\\+Alt\\+Shift\\+F1": "host:crash!"
