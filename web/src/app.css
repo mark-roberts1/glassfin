@@ -1,0 +1,389 @@
+/*
+ * Glassfin, seen from three metres.
+ *
+ * Three rules shape everything here. Focus must be unmistakable from across a
+ * room. Nothing may move except in response to something the viewer did. And
+ * the interface is a quiet frame around artwork; artwork is the only thing
+ * allowed to be loud.
+ *
+ * Colour comes from the Glassfin style guide and nowhere else. The brand block
+ * below is transcribed from it; every other colour in the application is a
+ * role token defined in terms of those, so a change to the guide is a change
+ * in one place.
+ */
+
+/* ---- Type ---------------------------------------------------------------
+ * Two weights, both vendored — see src/assets/fonts/README.md for why they are
+ * not fetched. `swap` rather than `block`: the files sit on the same disk as
+ * the application, so the swap window closes in a frame or two, and a brief
+ * fallback beats a blank screen if a file is ever missing.
+ */
+
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./assets/fonts/space-grotesk-400.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./assets/fonts/space-grotesk-500.woff2') format('woff2');
+}
+
+/* ---- The brand ----------------------------------------------------------
+ * Straight from the style guide's palette row. These are never used directly
+ * by a component — they exist so the role tokens below can be read as claims
+ * about the brand rather than as arbitrary hex.
+ */
+
+:root {
+  --brand-ink: #0e1518;
+  --brand-paper: #f5f3ee;
+  --brand-lead: #c68331;
+  --brand-silver: #7a9d8f;
+  --brand-trail: #5697de;
+  --brand-accent: #d5a051;
+
+  /* The guide's `.fine` grey, the one colour it uses on both the paper sheet
+     and the ink sheet, plus its lighter sibling for the darkest surfaces. */
+  --brand-mist: #7c8a90;
+  --brand-mist-light: #8da0a8;
+
+  /* Surfaces the guide draws specimens on: the light tile behind the stacked
+     lockup, and the ground of the icon sheet. */
+  --brand-tile: #e7e4db;
+  --brand-night: #0b1114;
+}
+
+/* ---- Roles: dark ---------------------------------------------------------
+ * The default, and the one that matters. This is a television application; it
+ * is used in the evening with the lights off far more often than not.
+ */
+
+:root {
+  color-scheme: dark;
+
+  --ground: var(--brand-night);
+  /* The same colour as channels, for gradients that need to fade to the page.
+     Kept in step with --ground by hand: CSS cannot decompose a hex. */
+  --ground-rgb: 11 17 20;
+  --raised: #162026;
+  --edge: rgba(245, 243, 238, 0.1);
+
+  --ink: var(--brand-paper);
+  --ink-dim: rgba(245, 243, 238, 0.64);
+  --ink-faint: var(--brand-mist-light);
+
+  --accent: var(--brand-accent);
+  /* Accent where it has to be *read* rather than seen — a caret, a selected
+     label. Identical to --accent here; see the light block for why it exists. */
+  --accent-text: var(--brand-accent);
+
+  /* The guide has no error colour. This one is picked to sit at the same
+     temperature as the rest of the palette rather than a browser-chrome red. */
+  --danger: #e0908c;
+
+  /* How hard the artwork wash and the hero backdrop are pushed down. A dark
+     surface can carry a stronger image; paper cannot. */
+  --ambient-opacity: 0.28;
+  --veil-near: 0.35;
+  --veil-mid: 0.78;
+
+  --shadow-focus: 0 18px 44px rgba(0, 0, 0, 0.7);
+  --shadow-lift: 0 10px 24px rgba(0, 0, 0, 0.6);
+  --shadow-poster: 0 24px 60px rgba(0, 0, 0, 0.6);
+
+  /* The fin, reversed — the ramp the guide uses on ink. */
+  --fin-1: #f4b46d;
+  --fin-2: #e0be76;
+  --fin-3: #cdc586;
+  --fin-4: #bec998;
+  --fin-5: #b4cba9;
+  --fin-6: #b1cab6;
+  --fin-7: #abcbbe;
+  --fin-8: #9dcec7;
+  --fin-9: #8ed0d5;
+  --fin-10: #83d0e6;
+  --fin-11: #81cdf9;
+  --fin-12: #95c7ff;
+}
+
+/* ---- Roles: light --------------------------------------------------------
+ * Paper, for a room with daylight in it. Not an inversion: the artwork
+ * treatments stay dark (see below), because a photograph is not themeable.
+ */
+
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --ground: var(--brand-paper);
+  --ground-rgb: 245 243 238;
+  --raised: var(--brand-tile);
+  --edge: rgba(14, 21, 24, 0.14);
+
+  --ink: var(--brand-ink);
+  --ink-dim: rgba(14, 21, 24, 0.66);
+  /* Mist, taken down about 14% in sRGB — same hue, enough contrast. The
+     guide's own #7C8A90 lands at 3.2:1 on paper, which is fine on a printed
+     sheet held at arm's length and not fine as hint text seen from a sofa. */
+  --ink-faint: #6b777c;
+
+  /* Lead rather than Accent. The two are the same gold at different depths,
+     and the lighter one has nothing left to say against paper. */
+  --accent: var(--brand-lead);
+  /* And Lead itself only manages 2.8:1 against paper, so anything that has to
+     be read as text takes the same gold darkened to 4.5:1. Gold on white is
+     simply a harder problem than gold on black. */
+  --accent-text: #986424;
+
+  --danger: #a6323f;
+
+  --ambient-opacity: 0.16;
+  --veil-near: 0.62;
+  --veil-mid: 0.9;
+
+  --shadow-focus: 0 14px 32px rgba(14, 21, 24, 0.18);
+  --shadow-lift: 0 8px 18px rgba(14, 21, 24, 0.14);
+  --shadow-poster: 0 20px 44px rgba(14, 21, 24, 0.22);
+
+  /* The fin, on paper — the darker ramp from the guide's primary lockup. */
+  --fin-1: #c68331;
+  --fin-2: #b28e3e;
+  --fin-3: #9f9652;
+  --fin-4: #8f9a67;
+  --fin-5: #859c79;
+  --fin-6: #819c87;
+  --fin-7: #7a9d8f;
+  --fin-8: #6ba098;
+  --fin-9: #59a1a7;
+  --fin-10: #4ba1b9;
+  --fin-11: #489ecc;
+  --fin-12: #5697de;
+}
+
+/* ---- Roles: over the picture --------------------------------------------
+ * These do not change with the theme, in either direction.
+ *
+ * Everything that floats over video or over artwork is reading against a
+ * photograph, and a photograph has no light mode. A paper-coloured transport
+ * bar over a film is illegible at any hour, so the transport, the track menu,
+ * the skip prompt and the wash on a poster are dark always. This is the one
+ * deliberate exception to theming in the application.
+ */
+
+:root {
+  --over-scrim: rgba(11, 17, 20, 0.86);
+  --over-panel: rgba(22, 32, 38, 0.92);
+  --over-artwork: rgba(11, 17, 20, 0.55);
+  --over-ink: #f5f3ee;
+  --over-ink-dim: rgba(245, 243, 238, 0.64);
+  --over-ink-faint: #8da0a8;
+  --over-edge: rgba(245, 243, 238, 0.14);
+  --over-accent: #d5a051;
+  --over-danger: #e0908c;
+}
+
+/* ---- Geometry and motion ------------------------------------------------ */
+
+:root {
+  /* Overscan. Older sets crop the edges of the signal; anything inside this
+     margin is guaranteed visible. */
+  --safe-x: 4.5vw;
+  --safe-y: 4vh;
+
+  --radius: 10px;
+  --radius-lg: 16px;
+
+  /* One duration and one curve, used everywhere. Consistent motion reads as
+     calm; mixed easing reads as a web page. */
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --fast: 180ms;
+  --slow: 420ms;
+
+  --poster-width: 15.5vw;
+  --still-width: 26vw;
+
+  /* How much a focused card grows. Named because two other things have to know
+     about it: the space a row reserves above its cards, and the gap between a
+     card and its own label. */
+  --focus-scale: 1.06;
+
+  /*
+   * The room that growth needs on one side, plus the ring.
+   *
+   * Half the extra height of the tallest card — a 2:3 poster — and then some.
+   * Everything here is in vw, so it holds at 1080p and at 4K; a fixed rem would
+   * be right at one resolution and clip at the other. Get this wrong and the
+   * top of the focused card is sliced off by the row it lives in, which is
+   * exactly the half of the highlight that makes it read at three metres.
+   */
+  --focus-room: calc(var(--poster-width) * 1.5 * (var(--focus-scale) - 1) / 2 + 8px);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden; /* The interface pans; the document never scrolls. */
+}
+
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: 'Space Grotesk', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1.45;
+  letter-spacing: -0.005em;
+  -webkit-font-smoothing: antialiased;
+
+  /* No text selection, no pointer affordances, no context menu: this is an
+     appliance, and stray selection highlights look like bugs on a television. */
+  user-select: none;
+  cursor: none;
+}
+
+#app {
+  height: 100%;
+}
+
+/* 500 is the heaviest weight the guide names and the heaviest weight shipped.
+   Tight tracking is what makes it read as a heading rather than as bold body
+   text — the same treatment the wordmark gets. */
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+/* ---- Focus -------------------------------------------------------------
+ * nav.ts adds .is-focused. The browser's own focus ring is suppressed because
+ * focus here is a property of the interface, not of the DOM element that
+ * happens to hold it.
+ */
+
+:focus {
+  outline: none;
+}
+
+.focusable {
+  transition:
+    transform var(--fast) var(--ease),
+    box-shadow var(--fast) var(--ease);
+  will-change: transform;
+}
+
+.focusable.is-focused {
+  /* Scale is the primary signal — it survives being photographed off a screen,
+     colour-blindness, and a badly calibrated television. The ring is support,
+     and it is drawn in the page's own ink so it inverts with the theme. */
+  transform: scale(var(--focus-scale));
+  box-shadow:
+    0 0 0 3px var(--ink),
+    var(--shadow-focus);
+  z-index: 2;
+}
+
+/* ---- Ambient backdrop --------------------------------------------------
+ * The focused item's backdrop, blurred behind everything. It is what makes
+ * browsing feel like an application rather than a grid of images.
+ */
+
+.ambient {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-size: cover;
+  background-position: center top;
+  opacity: 0;
+  transform: scale(1.08);
+  filter: blur(28px) saturate(1.15);
+  transition: opacity var(--slow) var(--ease);
+}
+
+.ambient.visible {
+  opacity: var(--ambient-opacity);
+}
+
+/* A vertical wash so text at the bottom stays readable over any artwork. It
+   fades to the page's own ground, whichever ground that is. */
+.ambient-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      to bottom,
+      rgb(var(--ground-rgb) / 0.55) 0%,
+      rgb(var(--ground-rgb) / 0.2) 35%,
+      rgb(var(--ground-rgb) / 1) 92%
+    ),
+    linear-gradient(to right, rgb(var(--ground-rgb) / 1) 0%, rgb(var(--ground-rgb) / 0) 45%);
+}
+
+.screen {
+  position: relative;
+  z-index: 2;
+  height: 100%;
+}
+
+/* ---- Scrolling ---------------------------------------------------------- */
+
+.scroller {
+  overflow: auto;
+  scrollbar-width: none;
+}
+
+.scroller::-webkit-scrollbar {
+  display: none;
+}
+
+/* ---- Reduced motion ----------------------------------------------------
+ * Honoured for the ambient wash and scrolling. Focus scale is kept: it is not
+ * decoration, it is how the viewer knows where they are.
+ */
+
+@media (prefers-reduced-motion: reduce) {
+  .ambient {
+    transition: none;
+  }
+  .scroller {
+    scroll-behavior: auto;
+  }
+}
+
+/* ---- While mpv is drawing ----------------------------------------------
+ * The shell composites the web layer *on top of* mpv's video. An opaque page
+ * background therefore hides the film completely — the single most important
+ * rule in this file for anything running in the shell rather than a browser.
+ * Everything else is hidden rather than unmounted, so screens keep their
+ * scroll position and focus for when playback ends.
+ *
+ * It is also why the theme stops at the edge of the video: past this line
+ * there is no page left to be light or dark.
+ */
+
+body.playing {
+  background: transparent;
+}
+
+body.playing .screen,
+body.playing .hero,
+body.playing .hero-veil,
+body.playing .ambient,
+body.playing .ambient-veil {
+  visibility: hidden;
+}

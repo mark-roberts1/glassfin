@@ -66,20 +66,25 @@ add_custom_target(generate_resources ALL
           -DRCC=${Qt6Core_RCC_EXECUTABLE}
           -DRESOURCES_DIR=${CMAKE_SOURCE_DIR}/resources
           -DNATIVE_DIR=${CMAKE_SOURCE_DIR}/native
+          -DWEB_DIR=${WEB_CLIENT_DIR}
           -P ${CMAKE_SOURCE_DIR}/CMakeModules/GenerateQtResources.cmake
   BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/qrc_resources.cpp
   VERBATIM
   COMMENT "Generating resources"
 )
+
+# The front end has to exist before it can be turned into resources.
+add_dependencies(generate_resources web_client)
+
 set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/qrc_resources.cpp PROPERTIES GENERATED TRUE)
 
 list(APPEND RESOURCE_FILES ${CMAKE_CURRENT_BINARY_DIR}/qrc_resources.cpp)
 
-set(MACOSX_BUNDLE_ICON_FILE jellyfin.icns)
+set(MACOSX_BUNDLE_ICON_FILE glassfin.icns)
 set(MACOSX_BUNDLE_SHORT_VERSION_STRING ${VERSION_STRING})
-set(MACOSX_BUNDLE_BUNDLE_NAME "Jellyfin")
+set(MACOSX_BUNDLE_BUNDLE_NAME "Glassfin")
 set(MACOSX_BUNDLE_BUNDLE_VERSION ${VERSION_STRING})
-set(MACOSX_BUNDLE_GUI_IDENTIFIER org.jellyfin.JellyfinDesktop)
+set(MACOSX_BUNDLE_GUI_IDENTIFIER org.glassfin.Glassfin)
 
 if(APPLE)
   if(HAVE_UPDATER)

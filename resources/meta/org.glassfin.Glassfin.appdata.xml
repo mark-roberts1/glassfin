@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>org.glassfin.Glassfin</id>
+  <name>Glassfin</name>
+  <summary>A television client for Jellyfin</summary>
+  <developer id="org.glassfin">
+    <name>Glassfin</name>
+  </developer>
+  <project_license>GPL-2.0</project_license>
+  <metadata_license>CC0-1.0</metadata_license>
+  <url type="homepage">https://glassfin.org</url>
+  <url type="help">https://github.com/mark-roberts1/glassfin/blob/master/README.md</url>
+  <url type="bugtracker">https://github.com/mark-roberts1/glassfin/issues</url>
+  <url type="vcs-browser">https://github.com/mark-roberts1/glassfin</url>
+
+  <provides>
+    <binary>glassfin</binary>
+  </provides>
+  <launchable type="desktop-id">org.glassfin.Glassfin.desktop</launchable>
+
+  <!--
+    No screenshots yet, on purpose. The ones inherited from Jellyfin Media
+    Player were pictures of jellyfin-web, which is not what this application
+    looks like, and shipping them would misrepresent it. Take new ones once the
+    shell builds on the target.
+  -->
+
+  <description>
+    <p>
+      Glassfin plays the films and television shows on your Jellyfin server, on
+      a television, from a sofa. Every part of it is reachable with a game
+      controller or a remote — there is nothing that needs a mouse, a keyboard
+      or a terminal in normal use.
+    </p>
+    <p>
+      Video is decoded by libmpv rather than in a browser, so audio passthrough,
+      hardware decoding and formats a browser will not touch all play without
+      the server transcoding them.
+    </p>
+    <p>
+      It handles films and television only. There is no music and no live TV.
+    </p>
+  </description>
+
+  <categories>
+    <category>AudioVideo</category>
+    <category>Video</category>
+    <category>Player</category>
+    <category>TV</category>
+  </categories>
+
+  <content_rating type="oars-1.1"/>
+
+  <branding>
+    <color type="primary" scheme_preference="light">#e7e4db</color>
+    <color type="primary" scheme_preference="dark">#1d292f</color>
+  </branding>
+
+  <keywords>
+    <keyword>media player</keyword>
+    <keyword>jellyfin server</keyword>
+    <keyword>video streaming</keyword>
+    <keyword>television</keyword>
+  </keywords>
+
+  <!--
+    Upstream's release history described Jellyfin Media Player, not this, so it
+    is not carried over. The first Glassfin release note goes here.
+  -->
+  <releases>
+    <release version="0.1.0" date="2026-09-08">
+      <description>
+        <p>First Glassfin build: a new interface, built for a controller.</p>
+      </description>
+    </release>
+  </releases>
+</component>

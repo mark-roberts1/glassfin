@@ -5,6 +5,7 @@
 #include "SettingsSection.h"
 #include "Paths.h"
 #include "core/ProfileManager.h"
+#include "ui/GlassfinScheme.h"
 #include "utils/Utils.h"
 #include "AudioSettingsController.h"
 #include "Names.h"
@@ -229,7 +230,7 @@ static void writeJson(const QString& filename, const QJsonObject& data, bool pre
 /////////////////////////////////////////////////////////////////////////////////////////
 QVariant SettingsComponent::readPreinitValue(const QString& sectionID, const QString& key)
 {
-  QString path = ProfileManager::activeProfile().dataDir("jellyfin-desktop.conf");
+  QString path = ProfileManager::activeProfile().dataDir("glassfin.conf");
   if (path.isEmpty())
     return QVariant();
   QJsonObject json = loadJson(path);
@@ -246,7 +247,7 @@ void SettingsComponent::load()
     return;
   }
 
-  loadConf(ProfileManager::activeProfile().dataDir("jellyfin-desktop.conf"), false);
+  loadConf(ProfileManager::activeProfile().dataDir("glassfin.conf"), false);
   loadConf(ProfileManager::activeProfile().dataDir("storage.json"), true);
 }
 
@@ -307,7 +308,7 @@ void SettingsComponent::loadConf(const QString& path, bool storage)
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 void SettingsComponent::saveSettings()
 {
-  QString path = ProfileManager::activeProfile().dataDir("jellyfin-desktop.conf");
+  QString path = ProfileManager::activeProfile().dataDir("glassfin.conf");
   if (path.isEmpty())
   {
     qWarning() << "No active profile, cannot save settings";
@@ -728,11 +729,11 @@ bool SettingsComponent::componentInitialize()
 /////////////////////////////////////////////////////////////////////////////////////////
 bool SettingsComponent::resetAndSaveOldConfiguration()
 {
-  QString path = ProfileManager::activeProfile().dataDir("jellyfin-desktop.conf");
+  QString path = ProfileManager::activeProfile().dataDir("glassfin.conf");
   if (path.isEmpty())
     return false;
   QFile settingsFile(path);
-  return settingsFile.rename(ProfileManager::activeProfile().dataDir("jellyfin-desktop.conf.old"));
+  return settingsFile.rename(ProfileManager::activeProfile().dataDir("glassfin.conf.old"));
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -745,8 +746,10 @@ QString SettingsComponent::getWebClientUrl(bool desktop)
 
   if (url == "bundled")
   {
-    // Use qrc:// scheme for bundled web client
-    url = "qrc:///web-client/extension/find-webclient.html";
+    // Glassfin's own interface, compiled into this binary. Point
+    // path/startupurl_desktop at http://localhost:5180 instead to run the
+    // front end from `npm run dev` against real mpv.
+    url = GLASSFIN_URL;
   }
 
   qDebug() << "Using web-client URL: " << url;
@@ -776,7 +779,7 @@ QString SettingsComponent::getClientName()
   QString name;
   name = SettingsComponent::Get().value(SETTINGS_SECTION_SYSTEM, "systemname").toString();
 
-  if (name.compare("JellyfinDesktop") == 0) {
+  if (name.compare("Glassfin") == 0) {
     name = Utils::ComputerName();
   }
 

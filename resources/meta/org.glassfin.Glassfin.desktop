@@ -1,0 +1,25 @@
+[Desktop Entry]
+Version=1.0
+Name=Glassfin
+Comment=Watch films and shows from your Jellyfin server
+Exec=glassfin
+Icon=org.glassfin.Glassfin
+Terminal=false
+Type=Application
+StartupWMClass=org.glassfin.Glassfin
+Categories=AudioVideo;Video;Player;TV;
+Keywords=jellyfin;media;movies;tv;shows;
+
+# Upstream offered four actions, splitting fullscreen/windowed across a
+# "desktop" and a "TV" mode. Those two modes now differ only in which keyboard
+# shortcuts are live, which is a setting rather than a way to launch — and four
+# entries in a launcher menu is noise on a television.
+Actions=Fullscreen;Windowed
+
+[Desktop Action Fullscreen]
+Name=Fullscreen
+Exec=glassfin --fullscreen
+
+[Desktop Action Windowed]
+Name=Windowed
+Exec=glassfin --windowed

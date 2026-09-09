@@ -677,7 +677,7 @@
     "values": [
         {
           "value": "systemname",
-          "default": "JellyfinDesktop",
+          "default": "Glassfin",
           "hidden": true,
           "platforms": [ "oe" ]
         },

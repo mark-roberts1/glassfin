@@ -7,17 +7,14 @@ assignees: ''
 
 ---
 
-Four considerations:
+Three considerations:
  - Please do not open bug reports to ask questions. Use the Discussions feature instead.
- - Please make sure the issue only pertains to Jellyfin Desktop. If it also occurs in the web client, send the issue to jellyfin-web instead.
- - Please make sure that your issue is not being caused by errors in custom CSS or note that you are using custom CSS.
-     - Notably, there have been instances of custom CSS breaking TV mode.
-     - You can disable custom CSS under Display in the user settings.
+ - Please make sure the issue pertains to Glassfin rather than to your Jellyfin server. Glassfin has its own interface and does not load jellyfin-web, so a problem that also happens in a browser against the same server is probably a server or library problem.
  - Please provide logs. You can drag the log file into the issue to attach it.
-     - Windows: `%LOCALAPPDATA%\Jellyfin Desktop\logs`
-     - Linux: `~/.local/share/jellyfin-desktop/logs/`
-     - Linux (Flatpak): `~/.var/app/org.jellyfin.JellyfinDesktop/data/jellyfin-desktop/logs/`
-     - macOS: `~/Library/Logs/Jellyfin Desktop/`
+     - Windows: `%LOCALAPPDATA%\Glassfin\logs`
+     - Linux: `~/.local/share/glassfin/logs/`
+     - Linux (Flatpak): `~/.var/app/org.glassfin.Glassfin/data/glassfin/logs/`
+     - macOS: `~/Library/Logs/Glassfin/`
 
 **Describe the bug**
 A clear and concise description of what the bug is.

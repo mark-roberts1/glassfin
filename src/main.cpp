@@ -17,6 +17,7 @@
 #include "system/SystemComponent.h"
 #include "Paths.h"
 #include "core/ProfileManager.h"
+#include "ui/GlassfinScheme.h"
 #include "player/PlayerComponent.h"
 #include "player/OpenGLDetect.h"
 #include "display/DisplayComponent.h"
@@ -141,7 +142,7 @@ int main(int argc, char *argv[])
   try
   {
     QCommandLineParser parser;
-    parser.setApplicationDescription("Jellyfin Desktop");
+    parser.setApplicationDescription("Glassfin");
     parser.addVersionOption();
     parser.addOptions({{{"h", "help"},              "Show this help"},
                        {{"l", "licenses"},          "Show license information"},
@@ -438,8 +439,15 @@ int main(int argc, char *argv[])
     if (parser.isSet("remote-debugging-port"))
       qputenv("QTWEBENGINE_REMOTE_DEBUGGING", parser.value("remote-debugging-port").toUtf8());
 
+    // Before initialize(), not after: this is when Chromium takes its copy of
+    // the scheme registry. See src/ui/GlassfinScheme.h.
+    GlassfinSchemeHandler::registerScheme();
+
     QtWebEngineQuick::initialize();
     QApplication app(newArgc, newArgv);
+
+    // The front end is served from inside the binary on glassfin://app/.
+    GlassfinSchemeHandler::install();
 
 #if defined(Q_OS_WIN) 
     // Setting window icon on OSX will break user ability to change it
@@ -448,9 +456,9 @@ int main(int argc, char *argv[])
 
 #if defined(Q_OS_LINUX) || defined(Q_OS_FREEBSD)
   	// Set window icon on Linux using system icon theme
-  	app.setWindowIcon(QIcon::fromTheme("org.jellyfin.JellyfinDesktop", QIcon(":/images/icon.png")));
+  	app.setWindowIcon(QIcon::fromTheme("org.glassfin.Glassfin", QIcon(":/images/icon.png")));
     // Set app id for Wayland compositor window icon
-    app.setDesktopFileName("org.jellyfin.JellyfinDesktop");
+    app.setDesktopFileName("org.glassfin.Glassfin");
 #endif
 
     // Configure default WebEngineProfile paths early (profile is already set)

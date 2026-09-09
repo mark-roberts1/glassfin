@@ -15,8 +15,8 @@ CMakePresets.json
 .*libreelec*
 debian/*.debhelper.log
 debian/.debhelper/
-debian/jellyfin-desktop/
+debian/glassfin/
 debian/files
-debian/jellyfin-desktop.substvars
+debian/glassfin.substvars
 debian/debhelper-build-stamp
 deployment/dist

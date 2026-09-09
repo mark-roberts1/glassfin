@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Glassfin</title>
+    <link rel="icon" href="/glassfin.svg" type="image/svg+xml" />
+
+    <!--
+      The theme, before the first paint.
+
+      Stylesheets arrive after this document does, so without a stamp here a
+      light-mode viewer gets a frame or two of near-black. Reads the same
+      localStorage key as lib/settings.svelte.ts and writes the same attribute
+      as lib/theme.ts; if either changes, this changes with it. It must never
+      throw — private-mode storage and a corrupt value both end up dark, which
+      is the default anyway.
+    -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('glassfin.preferences');
+          var theme = stored ? JSON.parse(stored).theme : 'dark';
+          if (theme === 'system') {
+            theme = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+          }
+          if (theme === 'light') document.documentElement.setAttribute('data-theme', 'light');
+        } catch (e) {
+          /* Dark. */
+        }
+      })();
+    </script>
+
+    <!-- Matches --ground in both palettes, so the gap before app.css is not white. -->
+    <style>
+      html {
+        background: #0b1114;
+      }
+      html[data-theme='light'] {
+        background: #f5f3ee;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

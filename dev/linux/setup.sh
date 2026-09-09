@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Jellyfin Desktop - Linux dependency installer
+# Glassfin - Linux dependency installer
 # Run once (Debian/Ubuntu) before build.sh.
 #
 # Installs everything listed under Build-Depends in ../../debian/control,

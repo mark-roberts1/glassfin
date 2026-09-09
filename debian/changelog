@@ -1,3 +1,17 @@
+glassfin (0.1.0-1) unstable; urgency=medium
+
+  * Rename from Jellyfin Desktop to Glassfin
+  * Change app ID to org.glassfin.Glassfin (settings from Jellyfin Desktop
+    and Jellyfin Media Player will NOT be migrated)
+  * Replace the interface: a new front end built for a game controller,
+    compiled into the binary rather than loaded from the server
+  * Scope to films and television only; no music, no live TV
+  * Build now requires Node.js
+  * Entries below are the history of jellyfin-desktop, the project this
+    was forked from, kept as they were written
+
+ -- Mark Roberts <mark@glassfin.org>  Tue, 08 Sep 2026 00:00:00 +0000
+
 jellyfin-desktop (2.0.0-1) unstable; urgency=medium
 
   * Rename to Jellyfin Desktop

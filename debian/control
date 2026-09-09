@@ -1,7 +1,7 @@
-Source: jellyfin-desktop
+Source: glassfin
 Section: video
 Priority: optional
-Maintainer:  Izzie Walton <izzie@iwalton.com>, Joshua Boniface <joshua@boniface.me>
+Maintainer: Mark Roberts <mark@glassfin.org>
 Build-Depends: debhelper (>= 10),
                autoconf,
                automake,
@@ -36,13 +36,15 @@ Build-Depends: debhelper (>= 10),
                libmpv-dev,
                wget,
                unzip,
-               qt6-base-private-dev
+               qt6-base-private-dev,
+               nodejs,
+               npm
 Standards-Version: 3.9.4
-Homepage: https://jellyfin.org/
-Vcs-Git: https://github.org/jellyfin/jellyfin-desktop.git
-Vcs-Browser: https://github.org/jellyfin/jellyfin-desktop
+Homepage: https://glassfin.org
+Vcs-Git: https://github.com/mark-roberts1/glassfin.git
+Vcs-Browser: https://github.com/mark-roberts1/glassfin
 
-Package: jellyfin-desktop
+Package: glassfin
 Architecture: any
 Depends: ${shlibs:Depends},
          qml6-module-qtwebengine,
@@ -52,5 +54,8 @@ Depends: ${shlibs:Depends},
          qml6-module-qtqml-workerscript,
          qml6-module-qtquick-templates,
          qml6-module-qt-labs-platform
-Description: Jellyfin is the Free Software Media System.
- This package provides the Jellyfin desktop media player.
+Description: A television client for Jellyfin.
+ Plays the films and television shows on a Jellyfin server, on a
+ television, from a sofa. Video is decoded by libmpv rather than in a
+ browser, so audio passthrough, hardware decoding and formats a browser
+ will not touch all play without the server transcoding them.

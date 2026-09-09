@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Jellyfin Desktop - macOS build script
+# Glassfin - macOS build script
 # Run setup.sh first to install dependencies
 set -eu
 

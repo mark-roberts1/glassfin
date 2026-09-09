@@ -1,0 +1,24 @@
+<!--
+  Glassfin. The play triangle dispersed into facets, and its reflection in the
+  surface. From the style guide, sheet 02.
+
+  The browser tab icon. Fixed colours: an icon is drawn on surfaces that are
+  not Glassfin, so it is not themed.
+-->
+<svg viewBox="0 0 200 200" width="512" height="512" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Glassfin app icon">
+    <defs>
+      <linearGradient id="gf-bg" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#1D292F" /><stop offset="1" stop-color="#070C0E" />
+      </linearGradient>
+      <radialGradient id="gf-gl" cx="50%" cy="48%" r="58%">
+        <stop offset="0" stop-color="#a9ccbe" stop-opacity=".26" /><stop offset="1" stop-color="#a9ccbe" stop-opacity="0" />
+      </radialGradient>
+      <clipPath id="gf-cp"><rect x="0" y="0" width="200" height="200" rx="46" ry="46" /></clipPath>
+    </defs>
+    <rect x="0" y="0" width="200" height="200" rx="46" ry="46" fill="url(#gf-bg)" />
+    <g clip-path="url(#gf-cp)">
+      <rect x="0" y="0" width="200" height="200" fill="url(#gf-gl)" />
+      <g transform="translate(33.35 18.42) scale(0.7284)"><path d="M 16 112 L 16 24 Q 22.56 31.19 32.2 32.54 L 32.2 112 Z" fill="#f4b46d" /><path d="M 32.2 112 L 32.2 32.54 Q 38.76 39.72 48.4 41.07 L 48.4 112 Z" fill="#dcc079" /><path d="M 48.4 112 L 48.4 41.07 Q 54.96 48.26 64.6 49.61 L 64.6 112 Z" fill="#c6c78e" /><path d="M 64.6 112 L 64.6 49.61 Q 71.16 56.79 80.8 58.14 L 80.8 112 Z" fill="#b7caa3" /><path d="M 80.8 112 L 80.8 58.14 Q 87.36 65.33 97 66.68 L 97 112 Z" fill="#b1cab5" /><path d="M 97 112 L 97 66.68 Q 103.56 73.87 113.2 75.22 L 113.2 112 Z" fill="#a9ccbe" /><path d="M 113.2 112 L 113.2 75.22 Q 119.76 82.4 129.4 83.75 L 129.4 112 Z" fill="#98cfcb" /><path d="M 129.4 112 L 129.4 83.75 Q 135.96 90.94 145.6 92.29 L 145.6 112 Z" fill="#87d0de" /><path d="M 145.6 112 L 145.6 92.29 Q 152.16 99.47 161.8 100.82 L 161.8 112 Z" fill="#80cef5" /><path d="M 161.8 112 L 161.8 100.82 Q 168.36 108.01 178 109.36 L 178 112 Z" fill="#95c7ff" /><g transform="matrix(1 0 0 -1 0 224)"><path d="M 16 112 L 16 24 Q 22.56 31.19 32.2 32.54 L 32.2 112 Z" fill="#f4b46d" /><path d="M 32.2 112 L 32.2 32.54 Q 38.76 39.72 48.4 41.07 L 48.4 112 Z" fill="#dcc079" /><path d="M 48.4 112 L 48.4 41.07 Q 54.96 48.26 64.6 49.61 L 64.6 112 Z" fill="#c6c78e" /><path d="M 64.6 112 L 64.6 49.61 Q 71.16 56.79 80.8 58.14 L 80.8 112 Z" fill="#b7caa3" /><path d="M 80.8 112 L 80.8 58.14 Q 87.36 65.33 97 66.68 L 97 112 Z" fill="#b1cab5" /><path d="M 97 112 L 97 66.68 Q 103.56 73.87 113.2 75.22 L 113.2 112 Z" fill="#a9ccbe" /><path d="M 113.2 112 L 113.2 75.22 Q 119.76 82.4 129.4 83.75 L 129.4 112 Z" fill="#98cfcb" /><path d="M 129.4 112 L 129.4 83.75 Q 135.96 90.94 145.6 92.29 L 145.6 112 Z" fill="#87d0de" /><path d="M 145.6 112 L 145.6 92.29 Q 152.16 99.47 161.8 100.82 L 161.8 112 Z" fill="#80cef5" /><path d="M 161.8 112 L 161.8 100.82 Q 168.36 108.01 178 109.36 L 178 112 Z" fill="#95c7ff" /></g><g fill="none" stroke="#0B1114" stroke-width="2" stroke-linecap="round"><path d="M 16 112 L 16 24" /><path d="M 32.2 112 L 32.2 32.54" /><path d="M 48.4 112 L 48.4 41.07" /><path d="M 64.6 112 L 64.6 49.61" /><path d="M 80.8 112 L 80.8 58.14" /><path d="M 97 112 L 97 66.68" /><path d="M 113.2 112 L 113.2 75.22" /><path d="M 129.4 112 L 129.4 83.75" /><path d="M 145.6 112 L 145.6 92.29" /><path d="M 161.8 112 L 161.8 100.82" /><path d="M 178 112 L 178 109.36" /><g transform="matrix(1 0 0 -1 0 224)"><path d="M 16 112 L 16 24" /><path d="M 32.2 112 L 32.2 32.54" /><path d="M 48.4 112 L 48.4 41.07" /><path d="M 64.6 112 L 64.6 49.61" /><path d="M 80.8 112 L 80.8 58.14" /><path d="M 97 112 L 97 66.68" /><path d="M 113.2 112 L 113.2 75.22" /><path d="M 129.4 112 L 129.4 83.75" /><path d="M 145.6 112 L 145.6 92.29" /><path d="M 161.8 112 L 161.8 100.82" /><path d="M 178 112 L 178 109.36" /></g></g></g>
+    </g>
+    <rect x=".9" y=".9" width="198.2" height="198.2" rx="45.1" ry="45.1" fill="none" stroke="#ffffff" stroke-opacity=".17" stroke-width="1.6" />
+  </svg>

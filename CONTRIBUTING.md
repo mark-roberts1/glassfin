@@ -1,8 +1,8 @@
-# Contributing to Jellyfin Desktop
+# Contributing to Glassfin
 
 ## Running Tests
 
-Jellyfin Desktop uses Qt Test for unit testing.
+Glassfin uses Qt Test for unit testing.
 
 ### Building Tests
 

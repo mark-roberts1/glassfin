@@ -433,7 +433,7 @@ QString SystemComponent::getUserAgent()
   QString kernel = QSysInfo::kernelType();
   kernel[0] = kernel[0].toUpper();
   QString chromeVersion = QString(qWebEngineChromiumVersion()).split('.').first() + ".0.0.0";
-  QString userAgent = QString("JellyfinDesktop/%1 (%2; %3) Chrome/%4")
+  QString userAgent = QString("Glassfin/%1 (%2; %3) Chrome/%4")
     .arg(Version::GetVersionString())
     .arg(kernel)
     .arg(getPlatformArchString())
@@ -447,7 +447,7 @@ QString SystemComponent::debugInformation()
   QString debugInfo;
   QTextStream stream(&debugInfo);
 
-  stream << "Jellyfin\n";
+  stream << "Glassfin\n";
   stream << "  Version: " << Version::GetVersionString() << " built: " << Version::GetBuildDate() << "\n";
   stream << "  Web Client Version: " << Version::GetWebVersion() << "\n";
   stream << "  Web Client URL: " << SettingsComponent::Get().value(SETTINGS_SECTION_PATH, "startupurl").toString() << "\n";
@@ -592,13 +592,13 @@ QString SystemComponent::getNativeShellScript()
     return QTextStream(&file).readAll();
   };
 
+  // Only the bridge. Upstream also injects mpvVideoPlayer, mpvAudioPlayer,
+  // inputPlugin and updatePlugin, which are adapters onto jellyfin-web's
+  // plugin contract — Glassfin talks to window.api directly and never loads
+  // jellyfin-web, so those are gone. nativeshell.js stays: it is what creates
+  // window.api in the first place, and it owns getDeviceProfile().
   QStringList scriptPaths = {
     ":/qtwebchannel/qwebchannel.js",
-    ":/web-client/extension/mpvVideoPlayer.js",
-    ":/web-client/extension/mpvAudioPlayer.js",
-    ":/web-client/extension/inputPlugin.js",
-    ":/web-client/extension/updatePlugin.js",
-    ":/web-client/extension/connectivityHelper.js",
     ":/web-client/extension/nativeshell.js"
   };
 
@@ -678,7 +678,7 @@ void SystemComponent::checkForUpdates()
   if (SettingsComponent::Get().value(SETTINGS_SECTION_MAIN, "checkForUpdates").toBool()) {
 #if !defined(Q_OS_WIN) && !defined(Q_OS_MAC)
     QNetworkAccessManager *manager = new QNetworkAccessManager(this);
-    QString checkUrl = "https://github.com/jellyfin/jellyfin-desktop/releases/latest";
+    QString checkUrl = "https://github.com/mark-roberts1/glassfin/releases/latest";
     QUrl qCheckUrl = QUrl(checkUrl);
     qDebug() << QString("Checking URL for updates: %1").arg(checkUrl);
     QNetworkRequest req(qCheckUrl);

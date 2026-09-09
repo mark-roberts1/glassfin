@@ -18,10 +18,9 @@ namespace Paths
   QString resourceDir(const QString& file = QString());
   QString socketName(const QString& serverName);
   QString soundsPath(const QString& sound);
-  QString webClientPath(const QString& mode = "tv");
   QString webExtensionPath(const QString& mode = "extension");
 
-  // Global paths (always ~/.local/share/jellyfin-desktop or equivalent)
+  // Global paths (always ~/.local/share/glassfin or equivalent)
   QString globalDataDir(const QString& file = QString());
   QString globalCacheDir(const QString& file = QString());
 };

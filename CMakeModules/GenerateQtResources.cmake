@@ -21,6 +21,21 @@ foreach(_file ${_files})
   string(APPEND qrc "<qresource prefix=\"/web-client/extension\"><file alias=\"${_rel}\">${_file}</file></qresource>\n")
 endforeach()
 
+# The Glassfin front end, served out of :/glassfin by GlassfinSchemeHandler.
+# Aliases keep their subdirectory, so web/dist/assets/index-x.js becomes
+# :/glassfin/assets/index-x.js and the relative URLs Vite emits resolve without
+# anything having to be rewritten.
+if(NOT EXISTS "${WEB_DIR}/index.html")
+  message(FATAL_ERROR "No front end at ${WEB_DIR} - see CMakeModules/WebClientConfiguration.cmake")
+endif()
+
+file(GLOB_RECURSE _files "${WEB_DIR}/*")
+list(SORT _files)
+foreach(_file ${_files})
+  file(RELATIVE_PATH _rel "${WEB_DIR}" "${_file}")
+  string(APPEND qrc "<qresource prefix=\"/glassfin\"><file alias=\"${_rel}\">${_file}</file></qresource>\n")
+endforeach()
+
 string(APPEND qrc "</RCC>")
 
 # Write qrc to temp file and run rcc
