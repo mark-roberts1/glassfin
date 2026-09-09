@@ -74,6 +74,16 @@ export const textEntry = {
   },
 
   /**
+   * Drop the field without firing `onCancel`. For a screen's own teardown —
+   * it is leaving because navigation already moved on, not because the user
+   * backed out of it, and `onCancel` usually pops the very navigation that's
+   * already happening.
+   */
+  close(): void {
+    field = null;
+  },
+
+  /**
    * Consume typed characters and deletion. Directions and `select` are left
    * alone so they still drive the on-screen keyboard's own focus.
    */

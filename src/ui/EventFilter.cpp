@@ -204,7 +204,14 @@ bool EventFilter::eventFilter(QObject* watched, QEvent* event)
   }
   else if (event->type() == QEvent::Wheel)
   {
-    return true;
+    // Desktop mode blocks only Ctrl+wheel zoom (below); this path used to
+    // block wheel input outright, which also took out trackpad/mouse-wheel
+    // scrolling of the interface's own carousels and grids. Match desktop's
+    // narrower guard instead of the blanket one.
+    bool allowZoom = SettingsComponent::Get().value(SETTINGS_SECTION_MAIN, "allowBrowserZoom").toBool();
+    QWheelEvent* wheel = dynamic_cast<QWheelEvent*>(event);
+    if (!allowZoom && wheel && (wheel->modifiers() & Qt::ControlModifier))
+      return true;
   }
   else if (event->type() == QEvent::MouseButtonPress)
   {

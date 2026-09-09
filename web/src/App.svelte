@@ -9,7 +9,7 @@
   import Player from './components/Player.svelte';
   import PlaybackMenu from './components/PlaybackMenu.svelte';
   import { session } from './lib/session.svelte';
-  import { handleAction, focusFirst } from './lib/nav';
+  import { handleAction, focusFirst, notePadInput } from './lib/nav';
   import { textEntry } from './lib/textentry.svelte';
   import { getHost, onHostActions, type HostAction } from './lib/host';
   import { preferences } from './lib/settings.svelte';
@@ -103,6 +103,7 @@
   }
 
   function route_(actions: HostAction[]) {
+    notePadInput();
     if (isPlaying()) {
       // Any button brings the transport back, so the screen is never silent.
       nudgeChrome();

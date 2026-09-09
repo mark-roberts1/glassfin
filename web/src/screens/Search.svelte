@@ -66,7 +66,7 @@
 
     return () => {
       clearTimeout(debounce);
-      if (textEntry.active) textEntry.cancel();
+      if (textEntry.active) textEntry.close();
     };
   });
 </script>

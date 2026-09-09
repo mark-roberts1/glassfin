@@ -246,10 +246,17 @@ body {
   letter-spacing: -0.005em;
   -webkit-font-smoothing: antialiased;
 
-  /* No text selection, no pointer affordances, no context menu: this is an
-     appliance, and stray selection highlights look like bugs on a television. */
+  /* No text selection, no context menu: this is an appliance, and stray
+     selection highlights look like bugs on a television. */
   user-select: none;
+  /* Hidden until nav.ts sees real mouse movement — see notePadInput() and the
+     mousemove listener in lib/nav.ts. A TV with no mouse attached never sets
+     this, so the cursor stays gone by default. */
   cursor: none;
+}
+
+:root[data-input-mode='pointer'] body {
+  cursor: auto;
 }
 
 #app {

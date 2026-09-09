@@ -3,10 +3,10 @@
   "idmatcher": "PS4 Controller",
   "mapping": {
     // D-Pad
-    "KEY_BUTTON_12": "down",
-    "KEY_BUTTON_11": "up",
-    "KEY_BUTTON_14": "right",
-    "KEY_BUTTON_13": "left",
+    "KEY_HAT_DOWN": "down",
+    "KEY_HAT_UP": "up",
+    "KEY_HAT_RIGHT": "right",
+    "KEY_HAT_LEFT": "left",
 
     // Square
     "KEY_BUTTON_2": "cycle_audio",

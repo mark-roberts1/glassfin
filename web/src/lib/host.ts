@@ -28,6 +28,8 @@
  * browser but not in the shell is the exact bug this is guarding against.
  */
 
+import { version as APP_VERSION } from '../../package.json';
+
 export type Signal<T extends unknown[] = []> = {
   connect(handler: (...args: T) => void): void;
   disconnect(handler: (...args: T) => void): void;
@@ -141,10 +143,21 @@ export interface Host {
   readonly native: boolean;
 }
 
+/**
+ * `SystemComponent::isWebClientConnected()` gates whether `hostInput` actions
+ * reach the web layer at all — until `hello()` is called, the shell treats
+ * every key and pad press as unclaimed and handles it itself (which only
+ * knows a handful of host-level shortcuts). Calling it once is what turns
+ * that switch on.
+ */
+interface NativeSystem {
+  hello(version: string): void;
+}
+
 declare global {
   interface Window {
-    api?: { player: NativePlayer; input: NativeInput; settings: NativeSettings };
-    apiPromise?: Promise<{ player: NativePlayer; input: NativeInput; settings: NativeSettings }>;
+    api?: { player: NativePlayer; input: NativeInput; settings: NativeSettings; system: NativeSystem };
+    apiPromise?: Promise<{ player: NativePlayer; input: NativeInput; settings: NativeSettings; system: NativeSystem }>;
     qt?: { webChannelTransport: unknown };
   }
 }
@@ -292,6 +305,7 @@ export function getHost(): Promise<Host> {
       return mockHost();
     }
     const api = await window.apiPromise!;
+    api.system.hello(APP_VERSION);
     return { player: api.player, input: api.input, settings: api.settings, native: true };
   })();
   return hostPromise;

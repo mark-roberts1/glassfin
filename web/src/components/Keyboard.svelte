@@ -106,7 +106,11 @@
   }
 
   .entry {
-    width: min(640px, 76vw);
+    /* Full width of whatever hosts this: the centred modal sheet everywhere
+       else, but Search embeds the keyboard inline in a pane far narrower
+       than 640px, and a fixed width there overflowed it. */
+    width: 100%;
+    max-width: 640px;
   }
 
   .label {

@@ -53,6 +53,46 @@ let current: HTMLElement | null = null;
 
 const listeners = new Set<(node: HTMLElement | null) => void>();
 
+/**
+ * Pointer vs. pad, the same switch every PC game makes: the mouse shows
+ * itself and drives hover/click the moment it moves, and any semantic action
+ * — keyboard arrows and a gamepad are indistinguishable by the time they
+ * reach here — puts it away again and hands control back to spatial nav.
+ *
+ * Defaults to 'pad' so a TV with no mouse attached never shows a cursor.
+ */
+type InputMode = 'pad' | 'pointer';
+let inputMode: InputMode = 'pad';
+
+function setPointerMode(): void {
+  if (inputMode === 'pointer') return;
+  inputMode = 'pointer';
+  document.documentElement.dataset.inputMode = 'pointer';
+}
+
+/** Called once, from the single place host actions enter the app. */
+export function notePadInput(): void {
+  if (inputMode === 'pad') return;
+  inputMode = 'pad';
+  document.documentElement.dataset.inputMode = 'pad';
+}
+
+// Real mouse movement only. A stationary cursor left sitting over a spot
+// where spatial nav then scrolls new content still fires 'mousemove'-adjacent
+// hover events in some browsers, but never a 'mousemove' with an unchanged
+// position — that distinction is what stops a controller session from being
+// knocked into pointer mode by its own scrolling.
+let lastPointerX = -1;
+let lastPointerY = -1;
+if (typeof window !== 'undefined') {
+  window.addEventListener('mousemove', (event) => {
+    if (event.clientX === lastPointerX && event.clientY === lastPointerY) return;
+    lastPointerX = event.clientX;
+    lastPointerY = event.clientY;
+    setPointerMode();
+  });
+}
+
 export function onFocusChange(handler: (node: HTMLElement | null) => void): () => void {
   listeners.add(handler);
   return () => listeners.delete(handler);
@@ -130,6 +170,20 @@ function verticalScroller(node: HTMLElement): HTMLElement | null {
   return null;
 }
 
+/** The nearest ancestor that actually scrolls horizontally — a carousel row. */
+function horizontalScroller(node: HTMLElement): HTMLElement | null {
+  for (let element = node.parentElement; element; element = element.parentElement) {
+    const overflow = getComputedStyle(element).overflowX;
+    if (
+      (overflow === 'auto' || overflow === 'scroll') &&
+      element.scrollWidth > element.clientWidth
+    ) {
+      return element;
+    }
+  }
+  return null;
+}
+
 /* Room for the focus ring, which is drawn outside the element's own box. */
 const REVEAL_MARGIN = 4;
 
@@ -148,31 +202,50 @@ const REVEAL_MARGIN = 4;
  * flush against the edge it came in from, which is where things get clipped.
  * Centring instead is what a television does. But centring *unconditionally* is
  * wrong too: opening a film's page would immediately scroll its title away to
- * put the Play button in the middle. So: leave it alone while it is comfortably
+ * put the Play button in the middle, and a mouse skimming across a carousel
+ * that is already fully visible would slam it to centre on every single card
+ * it happens to cross. So: leave each axis alone while it is comfortably
  * visible, and centre it the moment it is not.
  */
 function reveal(node: HTMLElement): void {
   const target = node.closest<HTMLElement>('[data-reveal]') ?? node;
-  const scroller = verticalScroller(target);
+  const vScroller = verticalScroller(target);
+  const hScroller = horizontalScroller(target);
 
-  if (!scroller) {
-    // Nothing scrolls vertically here, but a row still might horizontally.
+  if (!vScroller && !hScroller) {
     target.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
     return;
   }
 
   const box = target.getBoundingClientRect();
-  const view = scroller.getBoundingClientRect();
-  const visible = box.top - REVEAL_MARGIN >= view.top && box.bottom + REVEAL_MARGIN <= view.bottom;
+
+  let vVisible = true;
+  if (vScroller) {
+    const view = vScroller.getBoundingClientRect();
+    vVisible = box.top - REVEAL_MARGIN >= view.top && box.bottom + REVEAL_MARGIN <= view.bottom;
+  }
+
+  let hVisible = true;
+  if (hScroller) {
+    const view = hScroller.getBoundingClientRect();
+    hVisible = box.left - REVEAL_MARGIN >= view.left && box.right + REVEAL_MARGIN <= view.right;
+  }
 
   target.scrollIntoView({
-    block: visible ? 'nearest' : 'center',
-    inline: 'center',
+    block: vVisible ? 'nearest' : 'center',
+    inline: hVisible ? 'nearest' : 'center',
     behavior: 'smooth'
   });
 }
 
-export function focus(node: HTMLElement | null): void {
+/**
+ * `reveal` defaults on for keyboard/gamepad moves, which deliberately step one
+ * card at a time and want the row recentring under them. Mouse hover passes
+ * `false`: a real trackpad or wheel already scrolls the row at the viewer's
+ * own pace, and auto-centring under a moving cursor reads as the row
+ * dodging away from whatever it's being asked to click.
+ */
+export function focus(node: HTMLElement | null, options: { reveal?: boolean } = {}): void {
   if (node === current) return;
   current?.classList.remove('is-focused');
   current = node;
@@ -181,7 +254,7 @@ export function focus(node: HTMLElement | null): void {
     const group = entries.get(node)?.options.group;
     if (group) groupMemory.set(group, node);
     node.focus({ preventScroll: true });
-    reveal(node);
+    if (options.reveal ?? true) reveal(node);
     entries.get(node)?.options.onFocus?.();
   }
   listeners.forEach((handler) => handler(current));
@@ -305,12 +378,33 @@ export function focusable(node: HTMLElement, options: FocusableOptions = {}) {
   entries.set(node, { node, options });
   if (node.tabIndex < 0) node.tabIndex = -1;
 
+  // Hover only drives focus once real mouse movement has already claimed
+  // pointer mode — otherwise a controller-driven scroll placing a card under
+  // a stationary cursor would silently steal focus from the pad.
+  const onEnter = () => {
+    if (inputMode !== 'pointer') return;
+    if (entries.get(node)?.options.disabled) return;
+    focus(node, { reveal: false });
+  };
+  // A click is unambiguous regardless of mode: it cannot fire without real
+  // pointer input, so it claims pointer mode itself rather than waiting for it.
+  const onClick = () => {
+    if (entries.get(node)?.options.disabled) return;
+    setPointerMode();
+    focus(node, { reveal: false });
+    select();
+  };
+  node.addEventListener('mouseenter', onEnter);
+  node.addEventListener('click', onClick);
+
   return {
     update(next: FocusableOptions = {}) {
       const entry = entries.get(node);
       if (entry) entry.options = next;
     },
     destroy() {
+      node.removeEventListener('mouseenter', onEnter);
+      node.removeEventListener('click', onClick);
       entries.delete(node);
       for (const [group, remembered] of groupMemory) {
         if (remembered === node) groupMemory.delete(group);

@@ -21,7 +21,7 @@
     "values": [
       {
         "value": "webMode",
-        "default": "desktop",
+        "default": "tv",
         "hidden": true,
         "possible_values": [
           [ "desktop", "desktop" ],
