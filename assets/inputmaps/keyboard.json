@@ -1,0 +1,109 @@
+{
+  "name": "Keyboard Generic",
+  "idmatcher": "Keyboard.*",
+  "mapping":
+  {
+    // standard navigation, we allow shift modifiers
+    "(Shift\\+)?Left": "left",
+    "(Shift\\+)?Right": "right",
+    "(Shift\\+)?Up": "up",
+    "(Shift\\+)?Down": "down",
+    "(Return|Enter)": "enter",
+    "(Esc|Backspace)": {
+      "short": "back",
+      "long": "exit"
+    },
+
+    // Plain digits. EventFilter now reports a shifted digit as whatever
+    // symbol it actually produces (Shift+1 is "!", not "1"), so this only
+    // ever sees the unshifted key.
+    "([0-9])": "%1",
+
+    // Letters, in whichever case was actually typed — EventFilter resolves
+    // this from the key event's own text now, not from the key code, which
+    // has no concept of case at all. Space is its own named key, not a
+    // printable character as far as the key-code path is concerned.
+    "([A-Za-z])": "%1",
+    "Space": ["space", "play_pause"],
+
+    // The rest of a standard keyboard's printable symbols, for anything
+    // typed rather than pressed as a shortcut — a password is the case that
+    // matters most. Backslash is left out: it is claimed below as a PHT-style
+    // fullscreen toggle, and typing one would fight that. "=", "+" and "-"
+    // are handled separately, just below, since they also drive volume.
+    "([.:_,;'\"<>?~`!#$%^&*()[\\]{}@/])": "%1",
+
+    "[Pp]": "play_pause",
+    "Ctrl\\+P": "pause",
+    "[Xx]": "stop",
+    "[Bb]": "back",
+    "[Hh]": "home",
+    "[Aa]": "cycle_audio",
+    "Ctrl\\+A": "cycle_audio_back",
+    "[Ll]": "cycle_subtitles",
+    "Ctrl\\+L": "cycle_subtitles_back",
+    "[Ss]": "toggle_subtitles",
+    "Alt\\+A": "increase_audio_delay",
+    "Alt\\+Shift\\+A": "decrease_audio_delay",
+    "Alt\\+S": "increase_subtitles_delay",
+    "Alt\\+Shift\\+S": "decrease_subtitles_delay",
+    "PgUp": "seek_backward",
+    "PgDown": "seek_forward",
+    "Home": "step_backward",
+    "End": "step_forward",
+    "Ctrl\\+F": "search",
+    "Ctrl\\+M": "host:minimize",
+    "Meta\\+Down": "host:minimize",
+    "Ctrl\\+W": "host:quit",
+
+    // application shortcuts
+    "Ctrl\\+Shift\\+F": "host:toggleWebMode",
+    "Meta\\+Ctrl\\+F": "host:fullscreen",
+    "Meta\\+Enter": "host:toggleWebMode",
+    "F11": "host:fullscreen",
+    "Shift\\+F11": "host:fullscreen",
+    "Ctrl\\+Q": "host:close",
+    "Ctrl\\+Shift\\+R": "host:reload",
+    "Ctrl\\+Shift\\+D": "host:toggleDebug",
+    "Ctrl\\+Shift\\+A": "host:cycle_setting main.alwaysOnTop",
+
+    // emulate some of of PHT's behaviour
+    "[Ii]": "host:toggleDebug",
+    "[Ww]": "toggle_watched",
+    "\\\\": "host:fullscreen",
+    "[Zz]": "host:cycle_setting video.aspect",
+    "[Tt]": "host:cycle_setting main.alwaysOnTop",
+
+    // media keys from the FLIRC and on Linux keyboards
+    "Toggle Media Play\\/Pause": "play_pause",
+
+    // Microsoft Windows Media Center SE; Logitech Harmony device
+    "Media Pause": "pause",
+    "Media Play": "play_pause",
+    "Media Stop": "stop",
+    "Media Rewind": "seek_backward",
+    "Media Fast Forward": "seek_forward",
+    "Media Previous": "step_backward",
+    "Media Next": "step_forward",
+    "Back": "back",
+
+    // Windows Media Center keyboard shortcuts
+    "Alt\\+(Return|Enter)": "host:fullscreen",
+    "Ctrl\\+Shift\\+P": "play_pause",
+    "Ctrl\\+Shift\\+S": "stop",
+    "Ctrl\\+Shift\\+B": "seek_backward",
+    "Ctrl\\+Shift\\+G": "seek_forward",
+    "Ctrl\\+B": "step_backward",
+    "Ctrl\\+G": "step_forward",
+
+    // volume, but also typeable now that EventFilter can tell "=" and
+    // Shift+"=" (i.e. "+") apart — see the array-value fix in
+    // InputComponent::remapInput this depends on.
+    "=": ["=", "increase_volume"],
+    "\\+": ["+", "increase_volume"],
+    "\\-": ["-", "decrease_volume"],
+
+    // debug command to crash the host. for testing
+    "Ctrl\\+Alt\\+Shift\\+F1": "host:crash!"
+  }
+}
