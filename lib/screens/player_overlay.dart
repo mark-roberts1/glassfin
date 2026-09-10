@@ -16,11 +16,13 @@ import 'package:flutter/widgets.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
 import '../components/playback_menu.dart';
+import '../components/player_settings_menu.dart';
 import '../components/transport.dart';
 import '../design/focus.dart';
 import '../design/metrics.dart';
 import '../design/theme.dart';
 import '../design/tokens.dart';
+import '../nav/pointer.dart';
 import '../playback/controller.dart';
 
 class PlayerOverlay extends StatefulWidget {
@@ -28,16 +30,30 @@ class PlayerOverlay extends StatefulWidget {
     required this.playback,
     required this.menuOpen,
     required this.onCloseMenu,
+    required this.settingsOpen,
+    required this.onOpenMenu,
+    required this.onOpenSettings,
+    required this.onCloseSettings,
+    required this.onStop,
+    required this.onToggleFullscreen,
+    required this.fullscreen,
     super.key,
   });
 
   final PlaybackController playback;
 
   /// Held by the application root rather than here, because the input router
-  /// needs to know: while the menu is open, Back closes it instead of stopping
+  /// needs to know: while a menu is open, Back closes it instead of stopping
   /// the film.
   final bool menuOpen;
   final VoidCallback onCloseMenu;
+  final bool settingsOpen;
+  final VoidCallback onOpenMenu;
+  final VoidCallback onOpenSettings;
+  final VoidCallback onCloseSettings;
+  final VoidCallback onStop;
+  final VoidCallback onToggleFullscreen;
+  final bool fullscreen;
 
   @override
   State<PlayerOverlay> createState() => _PlayerOverlayState();
@@ -51,63 +67,94 @@ class _PlayerOverlayState extends State<PlayerOverlay> {
     final playback = widget.playback;
     final metrics = context.metrics;
 
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        // Black behind the picture rather than the page ground: letterbox bars
-        // are part of the film, and a paper-coloured frame around a 2.39:1 image
-        // is the single most obvious way to look wrong.
-        ColoredBox(
-          color: GlassfinTokens.overOnInk,
-          child: Video(
-            controller: _video,
-            controls: NoVideoControls,
-            fill: GlassfinTokens.overOnInk,
-          ),
-        ),
-
-        if (playback.loading || playback.switching)
-          const _Waiting(),
-
-        if (playback.error != null)
-          _Message(text: playback.error!, danger: true),
-
-        if (playback.chromeVisible && !widget.menuOpen)
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: PlayerTransport(playback: playback),
-          ),
-
-        // Above the transport, and offered rather than taken unless the viewer
-        // asked for automatic skipping.
-        if (playback.skip != null && !widget.menuOpen)
-          Positioned(
-            right: metrics.safeX,
-            bottom: metrics.safeY + Metrics.rem(9),
-            child: _SkipPrompt(
-              label: playback.skip!.label,
-              onSelect: playback.takeSkip,
+    return MouseRegion(
+      // Moving the mouse revives the transport, exactly as pressing a button
+      // does. The Qt build never needed this — it was driven by a remote — but
+      // on a desk the mouse *is* the input, and a picture that will not answer
+      // it reads as a hung application.
+      //
+      // Routed through PointerMode so that content moving under a stationary
+      // cursor does not count, which would otherwise hold the chrome up forever.
+      onHover: (event) {
+        if (PointerMode.instance.noteMove(event.position)) {
+          playback.nudgeChrome();
+        }
+      },
+      cursor: PointerMode.instance.active.value
+          ? SystemMouseCursors.basic
+          : SystemMouseCursors.none,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Black behind the picture rather than the page ground: letterbox bars
+          // are part of the film, and a paper-coloured frame around a 2.39:1
+          // image is the single most obvious way to look wrong.
+            ColoredBox(
+            color: GlassfinTokens.overOnInk,
+            child: Video(
+              controller: _video,
+              controls: NoVideoControls,
+              fill: GlassfinTokens.overOnInk,
             ),
           ),
 
-        if (widget.menuOpen)
-          PlaybackMenu(
-            audioTracks: playback.audioTracks,
-            subtitleTracks: playback.subtitleTracks,
-            audioIndex: playback.audioIndex,
-            subtitleIndex: playback.subtitleIndex,
-            onAudio: (index) {
-              playback.setAudioTrack(index);
-              widget.onCloseMenu();
-            },
-            onSubtitle: (index) {
-              playback.setSubtitleTrack(index);
-              widget.onCloseMenu();
-            },
-          ),
-      ],
+          if (playback.loading || playback.switching)
+            const _Waiting(),
+
+          if (playback.error != null)
+            _Message(text: playback.error!, danger: true),
+
+          if (playback.chromeVisible &&
+              !widget.menuOpen &&
+              !widget.settingsOpen)
+            Positioned.fill(
+              child: PlayerTransport(
+                playback: playback,
+                onBack: widget.onStop,
+                onSubtitles: widget.onOpenMenu,
+                onSettings: widget.onOpenSettings,
+                onFullscreen: widget.onToggleFullscreen,
+                fullscreen: widget.fullscreen,
+              ),
+            ),
+
+          // Above the transport, and offered rather than taken unless the viewer
+          // asked for automatic skipping.
+          if (playback.skip != null &&
+              !widget.menuOpen &&
+              !widget.settingsOpen)
+            Positioned(
+              right: metrics.safeX,
+              bottom: metrics.safeY + Metrics.rem(9),
+              child: _SkipPrompt(
+                label: playback.skip!.label,
+                onSelect: playback.takeSkip,
+              ),
+            ),
+
+          if (widget.settingsOpen)
+            PlayerSettingsMenu(
+              playback: playback,
+              onClose: widget.onCloseSettings,
+            ),
+
+          if (widget.menuOpen)
+            PlaybackMenu(
+              audioTracks: playback.audioTracks,
+              subtitleTracks: playback.subtitleTracks,
+              audioIndex: playback.audioIndex,
+              subtitleIndex: playback.subtitleIndex,
+              onAudio: (index) {
+                playback.setAudioTrack(index);
+                widget.onCloseMenu();
+              },
+              onSubtitle: (index) {
+                playback.setSubtitleTrack(index);
+                widget.onCloseMenu();
+              },
+            ),
+        ],
+      ),
     );
   }
 }

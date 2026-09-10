@@ -12,6 +12,8 @@ library;
 
 import 'package:flutter/widgets.dart';
 
+import '../components/transport.dart';
+import '../nav/pointer.dart';
 import '../nav/registry.dart';
 import '../playback/controller.dart';
 import 'actions.dart';
@@ -26,6 +28,8 @@ class InputRouter {
     this.menuOpen = false,
     this.onOpenMenu,
     this.onCloseMenu,
+    this.settingsOpen = false,
+    this.onCloseSettings,
     this.onSearch,
     this.onHome,
     this.onBack,
@@ -44,6 +48,10 @@ class InputRouter {
   final VoidCallback? onOpenMenu;
   final VoidCallback? onCloseMenu;
 
+  /// The gear popover. Modal like the track menu: Back closes it.
+  final bool settingsOpen;
+  final VoidCallback? onCloseSettings;
+
   final VoidCallback? onSearch;
   final VoidCallback? onHome;
 
@@ -52,6 +60,10 @@ class InputRouter {
 
   /// Returns true if the action was consumed.
   bool handle(InputAction action) {
+    // Any semantic action puts the interface back in pad mode, which hides the
+    // cursor again and stops hover from stealing focus out from under a D-pad.
+    PointerMode.instance.noteAction();
+
     final player = playback;
     if (player != null && player.isPlaying) {
       // Any button at all revives the transport: the overlay is how the viewer
@@ -69,8 +81,18 @@ class InputRouter {
   /// otherwise, because a skip prompt is on screen and pressing the obvious
   /// button should do the obvious thing.
   bool _duringPlayback(PlaybackController playback, InputAction action) {
-    // The menu is modal over the film: while it is up, the only thing that
+    // Either menu is modal over the film: while one is up, the only thing that
     // reaches the transport is the button that closes it.
+    if (settingsOpen) {
+      if (action == InputAction.back ||
+          action == InputAction.exit ||
+          action == InputAction.menu) {
+        onCloseSettings?.call();
+        return true;
+      }
+      return onNavigate(action);
+    }
+
     if (menuOpen) {
       if (action == InputAction.back ||
           action == InputAction.exit ||
@@ -87,8 +109,19 @@ class InputRouter {
       return true;
     }
 
-    // Up is the gesture: there is nothing above the transport to navigate to
-    // during playback, so the direction is free to mean "show me the tracks".
+    // **The transport is a toolbar, and the picture is not.**
+    //
+    // With the chrome down there is nothing on screen to move between, so the
+    // directions mean what they mean on any player: left and right seek, up
+    // reveals the tracks. With the chrome up, focus is inside the transport and
+    // the same keys have to move between its buttons instead — otherwise the
+    // row is visible and unreachable, which is the dead end the couch bar
+    // exists to prevent.
+    //
+    // The scrubber is the exception, and deliberately so: it is shaped like a
+    // slider, so left and right seek while it holds focus.
+    if (_inTransportRow) return onNavigate(action);
+
     if (action == InputAction.up || action == InputAction.menu) {
       onOpenMenu?.call();
       return true;
@@ -140,6 +173,15 @@ class InputRouter {
         return onNavigate(action);
     }
   }
+}
+
+/// Whether focus is on one of the transport's buttons, as opposed to the
+/// scrubber, the picture, or a screen hidden behind the film.
+bool get _inTransportRow {
+  final focused = FocusManager.instance.primaryFocus;
+  if (focused == null) return false;
+  final group = NavRegistry.instance.infoFor(focused)?.group;
+  return group == transportGroup || group == transportTopGroup;
 }
 
 /// Turns [InputAction] directions into focus movement.

@@ -130,3 +130,27 @@ class VideoSettings {
     forceTranscode4k: forceTranscode4k ?? this.forceTranscode4k,
   );
 }
+
+/// How the picture is fitted to the panel — the reference client's "Aspect
+/// Ratio" menu, expressed as the mpv properties that actually do it.
+///
+/// mpv has no single "fit mode" switch, so each option is a small set of
+/// properties: `keepaspect` decides whether the ratio is honoured at all, and
+/// `panscan` decides whether overflow is cropped rather than letterboxed.
+enum AspectMode {
+  /// The file's own ratio, letterboxed to fit. What you almost always want.
+  auto('Auto', {'keepaspect': 'yes', 'panscan': '0.0'}),
+
+  /// Fill the panel by cropping the overflow — removes the black bars on a
+  /// scope film at the cost of the edges of the frame.
+  cover('Cover', {'keepaspect': 'yes', 'panscan': '1.0'}),
+
+  /// Stretch to the panel, ratio be damned. Present because some broadcast
+  /// material is flagged wrong and this is the only way to correct it.
+  fill('Fill', {'keepaspect': 'no', 'panscan': '0.0'});
+
+  const AspectMode(this.label, this.properties);
+
+  final String label;
+  final Map<String, String> properties;
+}

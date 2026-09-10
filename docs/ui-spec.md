@@ -597,26 +597,58 @@ A hint line: "A keyboard works here too — type straight into the field."
 
 ### 4.6 Player transport
 
-Fixed to the bottom, `padding: 6rem safe-x calc(safe-y + 1.5rem)`, over a
-`linear-gradient(to top, rgba(0,0,0,0.92) 30%, rgba(0,0,0,0))`. Fades over 420ms; hidden when
-playing and chrome has timed out. **Chrome timeout is 4000ms**; any button revives it; pausing
-shows it and cancels the timer entirely, so it stays up while paused.
+**Rewritten in the Flutter build, at the project owner's direction, to match the player in
+Jellyfin Media Player.** What is described here is the current design; the Svelte transport it
+replaced was a title, a scrub bar and a line of keyboard hints, and is gone.
 
-1. Title at `1.8rem` (series name for episodes) and a sub-line `S{n}:E{n} · {episode name}` in
-   `over-ink-dim`.
-2. A bar: elapsed time (tabular numerals, `min-width: 5.5ch`), a 5px rounded track in
-   `rgba(255,255,255,0.22)` with an `over-ink` fill and a **14px circular head** with a soft
-   shadow ("the head is what the eye tracks while seeking"), then remaining time rendered with a
-   **minus sign U+2212**, not a hyphen.
-3. Hints at `0.88rem` in `over-ink-faint`: the state (`Changing track…` / `Paused` / `Playing`)
-   then `OK play|pause`, `←  → skip 30s` (note the double space between the arrows), `Up audio & subtitles`,
-   `Back stop`. The emphasised keys are weight 500 in `over-ink-dim` — not real bold.
+The reference is mouse-driven and this one is not, so the layout and control set are taken from
+it while the scale and the input model are not: glyphs are `1.9rem` (play/pause `×1.25`) rather
+than the reference's ~24px, and **every control is registered for directional navigation**.
+Nothing is reachable only by pointer.
+
+Fades over 420ms. **Chrome timeout is 4000ms**; any button revives it, mouse movement revives it,
+and pausing shows it and cancels the timer entirely so it stays up while paused.
+
+**Top bar** — over a downward `over-video-scrim` gradient: a back button (group `transport-top`),
+then one line, `{title} — S{n}:E{n} · {episode}`, at `1.35rem`. The reference stacks nothing; the
+series carries the episode on the same line.
+
+**Scrubber** — elapsed (tabular numerals) · the track · remaining with a **minus sign U+2212**.
+A 5px rounded track in `over-track` with an `over-ink` fill and a 14px circular head ("the head is
+what the eye tracks while seeking"). It is **focusable, in its own group `transport-scrub`**, and
+click-and-drag seeks.
+
+**Control row** (group `transport`): previous episode, back 30s, play/pause, forward 30s, next
+episode, then the wall-clock finish — `Ends at 11:11 PM`, which answers the question actually
+being asked, where "1:10:57 remaining" needs arithmetic against a clock nobody is looking at.
+Right-aligned: subtitles (lit `over-accent` when a track is on), volume, settings, fullscreen.
+
+Previous and Next step through the season's episodes and **dim rather than disappear** on a film,
+because a control that comes and goes moves everything beside it. Volume steps on select and wraps
+at 100 — a drag-only slider would be unreachable from a remote.
+
+**Left and right seek, and that survives the row being focusable.** The scrubber is deliberately
+not in the `transport` group: the router hands the directions to navigation only when focus is on
+an actual button, so the scrubber behaves like the slider it resembles while the row behaves like
+a toolbar. Focus lands on the scrubber whenever the chrome appears, so the default gesture is
+unchanged. With the chrome down, `up` still opens the track menu.
+
+**Settings popover** (group `player-settings`) — anchored bottom-right over a dimmed picture, rows
+lighting on focus as the reference lights on hover, each cycling on select: Aspect Ratio
+(`Auto`/`Cover`/`Fill`, mapped to mpv's `keepaspect` and `panscan` — mpv has no single fit
+switch), Playback Speed, Repeat Mode (mpv's `loop-file`), and Playback Info.
+
+Playback Info reports **delivery first** — direct play, direct stream (remuxed), or transcoding —
+which is the line that explains a stutter or a wrong-looking picture.
+
+Deliberately absent: **favourites** (the heart in the reference; `CLAUDE.md` records favourites as
+not ported) and **Quality**, which caps the streaming bitrate and therefore needs a fresh
+`PlaybackInfo` and a reload — that belongs with the device profile, not with a menu.
 
 Time format: `h:mm:ss` above an hour, `m:ss` below.
 
-**Browser stand-in** (no mpv): a full-screen backdrop under `rgba(0,0,0,0.78)` with "No video
-here" and an explanation. Without it, starting playback in a browser is indistinguishable from a
-freeze. *In Flutter this is unnecessary — there is always a real player.*
+*The Svelte build also had a browser stand-in panel for when no mpv was present. In Flutter there
+is always a real player, so it is gone.*
 
 ### 4.7 PlaybackMenu
 

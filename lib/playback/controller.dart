@@ -135,6 +135,17 @@ class PlaybackController extends ChangeNotifier {
   int? _audioIndex;
   int? _subtitleIndex;
 
+  double _volume = 100;
+  double _rate = 1;
+  bool _looping = false;
+  AspectMode _aspect = AspectMode.auto;
+
+  /// The other episodes of this season, so Previous and Next have somewhere to
+  /// go. Empty for a film, which is why both buttons disable rather than vanish
+  /// — a control that moves position between items would be worse.
+  List<Item> _siblings = const [];
+  int _siblingIndex = -1;
+
   Item? get item => _item;
   Duration get position => _position;
   Duration get duration => _duration;
@@ -156,6 +167,33 @@ class PlaybackController extends ChangeNotifier {
   int? get subtitleIndex => _subtitleIndex;
 
   bool get isPlaying => _session != null;
+
+  /// 0–100, matching mpv's own scale.
+  double get volume => _volume;
+  double get rate => _rate;
+  bool get looping => _looping;
+  AspectMode get aspect => _aspect;
+
+  Duration get remaining {
+    final left = _duration - _position;
+    return left.isNegative ? Duration.zero : left;
+  }
+
+  /// Direct play, direct stream, or transcode — in the terms the server used.
+  ///
+  /// The one line worth reading when a film stutters or the colours look wrong,
+  /// which is exactly why the reference client puts it in Playback Info.
+  String get deliveryDescription {
+    final source = _session?.source;
+    if (source == null) return 'Not playing';
+    if (source.isTranscoding) return 'Transcoding (server is re-encoding)';
+    if (source.supportsDirectPlay) return 'Direct play';
+    return 'Direct stream (remuxed, not re-encoded)';
+  }
+
+  bool get hasPrevious => _siblingIndex > 0;
+  bool get hasNext =>
+      _siblingIndex >= 0 && _siblingIndex < _siblings.length - 1;
 
   // ---- Internals ------------------------------------------------------------
 
@@ -356,6 +394,8 @@ class PlaybackController extends ChangeNotifier {
     _subtitleTracks = const [];
     _audioIndex = null;
     _subtitleIndex = null;
+    _siblings = const [];
+    _siblingIndex = -1;
     _switching = false;
     _chromeTimer?.cancel();
     notifyListeners();
@@ -470,6 +510,7 @@ class PlaybackController extends ChangeNotifier {
     );
 
     _attachPlayerStreams();
+    unawaited(_loadSiblings(item));
 
     await configureMpv();
     await _player.open(
@@ -527,8 +568,23 @@ class PlaybackController extends ChangeNotifier {
           notifyListeners();
         }
       }),
+      _player.stream.volume.listen((volume) {
+        _volume = volume;
+        notifyListeners();
+      }),
+      _player.stream.rate.listen((rate) {
+        _rate = rate;
+        notifyListeners();
+      }),
       _player.stream.completed.listen((completed) {
-        if (completed) unawaited(stop());
+        // Roll into the next episode rather than dropping back to the
+        // interface, which is what anyone watching a series expects.
+        if (!completed) return;
+        if (hasNext && !_looping) {
+          unawaited(playNext());
+        } else {
+          unawaited(stop());
+        }
       }),
       _player.stream.error.listen((message) {
         _error = message;
@@ -761,6 +817,78 @@ class PlaybackController extends ChangeNotifier {
   }
 
   Future<void> seekBy(Duration delta) => seekTo(_position + delta);
+
+  Future<void> setVolume(double value) async {
+    _volume = value.clamp(0, 100);
+    notifyListeners();
+    await _player.setVolume(_volume);
+  }
+
+  Future<void> setRate(double value) async {
+    _rate = value;
+    notifyListeners();
+    await _player.setRate(value);
+  }
+
+  /// Repeat this item. mpv's own `loop-file`, so it costs no bookkeeping here
+  /// and survives a seek past the end.
+  Future<void> setLooping(bool value) async {
+    _looping = value;
+    notifyListeners();
+    await _native?.setProperty('loop-file', value ? 'inf' : 'no');
+  }
+
+  Future<void> setAspect(AspectMode mode) async {
+    _aspect = mode;
+    notifyListeners();
+    final native = _native;
+    if (native == null) return;
+    for (final entry in mode.properties.entries) {
+      try {
+        await native.setProperty(entry.key, entry.value);
+      } catch (error) {
+        debugPrint('glassfin: could not set ${entry.key}: $error');
+      }
+    }
+  }
+
+  /// The next or previous episode of the season.
+  ///
+  /// Reports progress for the outgoing item first — [start] tears the session
+  /// down with `report: true`, so the resume point of the episode being left
+  /// behind is written before the new one begins.
+  Future<void> playNext() async {
+    if (!hasNext) return;
+    await start(_siblings[_siblingIndex + 1]);
+  }
+
+  Future<void> playPrevious() async {
+    if (!hasPrevious) return;
+    await start(_siblings[_siblingIndex - 1]);
+  }
+
+  /// Which episodes sit either side of this one.
+  ///
+  /// Failure is silent and simply leaves both buttons disabled: not knowing the
+  /// neighbours is a smaller problem than refusing to play the film.
+  Future<void> _loadSiblings(Item item) async {
+    _siblings = const [];
+    _siblingIndex = -1;
+    final seriesId = item.seriesId;
+    if (item.type != ItemKind.episode || seriesId == null) return;
+    try {
+      final episodes = await _client.episodes(
+        seriesId,
+        seasonId: item.seasonId,
+      );
+      final index = episodes.indexWhere((candidate) => candidate.id == item.id);
+      if (index < 0) return;
+      _siblings = episodes;
+      _siblingIndex = index;
+    } catch (_) {
+      // Left empty on purpose.
+    }
+  }
 
   @override
   void dispose() {

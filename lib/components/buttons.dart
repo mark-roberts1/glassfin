@@ -14,6 +14,7 @@ import 'package:flutter/widgets.dart';
 
 import '../design/focus.dart';
 import '../design/metrics.dart';
+import '../design/primary_style.dart';
 import '../design/theme.dart';
 import '../design/tokens.dart';
 
@@ -63,6 +64,7 @@ class GlassButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final inverted = tone == ButtonTone.primary;
+    final primary = PrimaryStyle.resolve(tokens);
 
     return Focusable(
       group: group,
@@ -77,28 +79,38 @@ class GlassButton extends StatelessWidget {
               horizontal: Metrics.rem(1),
               vertical: Metrics.rem(0.85),
             ),
-        alignment: centred ? Alignment.center : Alignment.centerLeft,
         decoration: BoxDecoration(
           borderRadius: Radii.br,
           color: switch (tone) {
-            ButtonTone.primary => tokens.ink,
+            ButtonTone.primary => primary.fill,
             ButtonTone.quiet => null,
             ButtonTone.plain => tokens.raised,
           },
           border: tone == ButtonTone.quiet
               ? null
-              : Border.all(color: inverted ? tokens.ink : tokens.edge),
+              : Border.all(color: inverted ? primary.border : tokens.edge),
         ),
-        child: Text(
-          label,
-          textAlign: centred ? TextAlign.center : TextAlign.start,
-          style: (textStyle ?? Type.body).copyWith(
-            fontWeight: inverted ? Type.medium : null,
-            color: switch (tone) {
-              ButtonTone.primary => tokens.ground,
-              ButtonTone.quiet => tokens.inkDim,
-              ButtonTone.plain => tokens.ink,
-            },
+        // **Align, not Container.alignment.** A Container given an alignment
+        // expands to fill whatever it is offered, so in a Wrap — Detail's
+        // actions, the keyboard's controls — every button took the full width
+        // and stacked one per line. Align with a width factor shrink-wraps
+        // under loose constraints and still fills under tight ones, so Login's
+        // stretched column keeps its full-width buttons either way.
+        child: Align(
+          alignment: centred ? Alignment.center : Alignment.centerLeft,
+          widthFactor: 1,
+          heightFactor: 1,
+          child: Text(
+            label,
+            textAlign: centred ? TextAlign.center : TextAlign.start,
+            style: (textStyle ?? Type.body).copyWith(
+              fontWeight: inverted ? Type.medium : null,
+              color: switch (tone) {
+                ButtonTone.primary => primary.ink,
+                ButtonTone.quiet => tokens.inkDim,
+                ButtonTone.plain => tokens.ink,
+              },
+            ),
           ),
         ),
       ),

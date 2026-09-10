@@ -10,8 +10,9 @@ import 'dart:ui';
 
 import 'package:flutter/widgets.dart' show TraversalDirection;
 
-/// Forgives sub-pixel layout and ragged row heights. Without it, two cards laid
-/// out at y=100 and y=100.0001 are not "the same row" and left/right breaks.
+/// Forgives sub-pixel layout and lets same-row items with ragged heights still
+/// qualify for a horizontal move. Without it, two cards whose facing edges are a
+/// hundredth of a pixel apart the wrong way are not reachable from each other.
 const double travelTolerance = -1;
 
 /// Cross-axis misalignment is a gentle tiebreaker when the boxes overlap…
@@ -30,15 +31,34 @@ bool _isHorizontal(TraversalDirection direction) =>
 
 /// Distance from [from] to [to] along the direction of travel.
 ///
-/// Measured leading-edge to leading-edge, so a tall candidate does not win
-/// simply by being tall.
-double travelDistance(Rect from, Rect to, TraversalDirection direction) =>
-    switch (direction) {
-      TraversalDirection.left => from.left - to.left,
-      TraversalDirection.right => to.left - from.left,
-      TraversalDirection.up => from.top - to.top,
-      TraversalDirection.down => to.top - from.top,
-    };
+/// **Measured between the two facing edges** — for a move up, from the origin's
+/// top to the candidate's bottom — so it is the gap between the boxes rather
+/// than the offset between their leading corners.
+///
+/// This is not a detail. Leading-edge to leading-edge gives a same-row
+/// neighbour a travel of *zero* on a vertical move, which clears the tolerance
+/// and makes it a legal destination; it then beats anything genuinely above,
+/// and pressing Up walks sideways along the row instead of leaving it. Facing
+/// edges give that neighbour a large negative travel, so it is rejected outright
+/// and the only candidates left are the ones actually in that direction.
+double travelDistance(Rect from, Rect to, TraversalDirection direction) {
+  final fromNear = switch (direction) {
+    TraversalDirection.right => from.right,
+    TraversalDirection.left => from.left,
+    TraversalDirection.down => from.bottom,
+    TraversalDirection.up => from.top,
+  };
+  final toNear = switch (direction) {
+    TraversalDirection.right => to.left,
+    TraversalDirection.left => to.right,
+    TraversalDirection.down => to.top,
+    TraversalDirection.up => to.bottom,
+  };
+  return direction == TraversalDirection.right ||
+          direction == TraversalDirection.down
+      ? toNear - fromNear
+      : fromNear - toNear;
+}
 
 /// How much the two boxes share on the axis perpendicular to travel.
 double crossAxisOverlap(Rect a, Rect b, TraversalDirection direction) {

@@ -13,8 +13,9 @@ library;
 
 import 'package:flutter/widgets.dart';
 
-import '../design/focus.dart';
+import '../design/focus.dart' show Focusable, FocusVisual, ringWidth;
 import '../design/metrics.dart';
+import '../design/primary_style.dart';
 import '../design/theme.dart';
 import '../design/tokens.dart';
 import '../input/text_entry.dart';
@@ -92,29 +93,36 @@ class _OnScreenKeyboardState extends State<OnScreenKeyboard> {
     final tokens = context.tokens;
     final rows = _symbolPage ? _symbols : _letters;
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        _EntryField(session: widget.session),
-        SizedBox(height: Metrics.rem(1.4)),
-        _Keys(
-          rows: rows,
-          typed: _typed,
-          onKey: widget.session.insert,
-          symbolPage: _symbolPage,
-          shift: _shift,
-          onShift: () => setState(() => _shift = !_shift),
-          onPage: () => setState(() => _symbolPage = !_symbolPage),
-        ),
-        SizedBox(height: Metrics.rem(1.4)),
-        _Controls(session: widget.session, onDone: widget.onDone),
-        SizedBox(height: Metrics.rem(1.4)),
-        Text(
-          'A keyboard works here too — type straight into the field.',
-          style: Type.rem(0.85).copyWith(color: tokens.inkFaint),
-        ),
-      ],
+    // The focus ring is drawn 3px outside its element, and a scrolling
+    // ancestor clips it — which is why the ring on a full-width control showed
+    // only its top and bottom edges. Reserve the space here so it never does.
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: ringWidth + 1),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          _EntryField(session: widget.session),
+          SizedBox(height: Metrics.rem(1.4)),
+          _Keys(
+            rows: rows,
+            typed: _typed,
+            onKey: widget.session.insert,
+            symbolPage: _symbolPage,
+            shift: _shift,
+            onShift: () => setState(() => _shift = !_shift),
+            onPage: () => setState(() => _symbolPage = !_symbolPage),
+          ),
+          SizedBox(height: Metrics.rem(1.4)),
+          _Controls(session: widget.session, onDone: widget.onDone),
+          SizedBox(height: Metrics.rem(1.4)),
+          Text(
+            'A keyboard works here too — type straight into the field.',
+            textAlign: TextAlign.center,
+            style: Type.rem(0.85).copyWith(color: tokens.inkFaint),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -271,42 +279,69 @@ class _Keys extends StatelessWidget {
   final VoidCallback onPage;
 
   @override
-  Widget build(BuildContext context) {
-    final gap = Metrics.rem(0.55);
-    final keyWidth = Metrics.rem(3.6);
-    final wideWidth = keyWidth * 2 + gap;
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final gap = Metrics.rem(0.55);
 
-    return SizedBox(
-      // Six columns of keys plus the gaps between them. Fixed rather than
-      // stretched, so that the keys stay the same size in Search's narrow pane
-      // as they are in the full-width sheet.
-      width: keyWidth * 6 + gap * 5,
-      child: Wrap(
-        spacing: gap,
-        runSpacing: gap,
-        children: [
-          for (final row in rows)
-            for (final key in row)
+      // **Six columns is the invariant; the key size is what flexes.**
+      //
+      // A fixed key width overflows Search's pane, and an overflowing Wrap does
+      // not clip — it reflows, into five columns or four. That silently
+      // destroys the one property this layout exists for: the alphabet laid out
+      // six across, so Z is about seven presses away rather than twenty-five.
+      // The letters would still all be present, which is why it reads as the
+      // dimensions merely being "off" rather than as a broken control.
+      final preferred = Metrics.rem(3.6);
+      final available = constraints.maxWidth.isFinite
+          ? constraints.maxWidth
+          : preferred * 6 + gap * 5;
+      final keyWidth = ((available - gap * 5) / 6).clamp(
+        // A floor as well: below this the faces stop being legible from a sofa,
+        // and a horizontal scroll is the better failure.
+        Metrics.rem(2.2),
+        preferred,
+      );
+      final wideWidth = keyWidth * 2 + gap;
+
+      return SizedBox(
+        width: keyWidth * 6 + gap * 5,
+        child: Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            for (final row in rows)
+              for (final key in row)
+                _Key(
+                  width: keyWidth,
+                  label: typed(key),
+                  onSelect: () => onKey(typed(key)),
+                ),
+            if (!symbolPage) ...[
               _Key(
-                width: keyWidth,
-                label: typed(key),
-                onSelect: () => onKey(typed(key)),
+                width: wideWidth,
+                label: 'Shift',
+                small: true,
+                active: shift,
+                onSelect: onShift,
               ),
-          if (!symbolPage) ...[
-            _Key(
-              width: wideWidth,
-              label: 'Shift',
-              small: true,
-              active: shift,
-              onSelect: onShift,
-            ),
-            _Key(width: wideWidth, label: '123', small: true, onSelect: onPage),
-          ] else
-            _Key(width: wideWidth, label: 'ABC', small: true, onSelect: onPage),
-        ],
-      ),
-    );
-  }
+              _Key(
+                width: wideWidth,
+                label: '123',
+                small: true,
+                onSelect: onPage,
+              ),
+            ] else
+              _Key(
+                width: wideWidth,
+                label: 'ABC',
+                small: true,
+                onSelect: onPage,
+              ),
+          ],
+        ),
+      );
+    },
+  );
 }
 
 class _Key extends StatelessWidget {
@@ -403,6 +438,7 @@ class _Control extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
+    final style = PrimaryStyle.resolve(tokens);
 
     return Focusable(
       // A separate group from the keys, so that the keyboard's own focus memory
@@ -412,22 +448,29 @@ class _Control extends StatelessWidget {
       onSelect: onSelect,
       child: (context, focused) => Container(
         constraints: BoxConstraints(minWidth: minWidth ?? Metrics.rem(3.6)),
-        alignment: Alignment.center,
         padding: EdgeInsets.symmetric(
           horizontal: Metrics.rem(1),
           vertical: Metrics.rem(0.7),
         ),
         decoration: BoxDecoration(
-          color: primary ? tokens.ink : tokens.raised,
-          border: Border.all(color: primary ? tokens.ink : tokens.edge),
+          color: primary ? style.fill : tokens.raised,
+          border: Border.all(color: primary ? style.border : tokens.edge),
           borderRadius: Radii.br,
         ),
-        child: Text(
-          label,
-          style: Type.rem(
-            1.05,
-            weight: primary ? Type.medium : Type.regular,
-          ).copyWith(color: primary ? tokens.ground : tokens.ink),
+        // Align rather than Container.alignment — see GlassButton. With the
+        // latter these four controls each filled the pane and stacked, which
+        // made the keyboard tall enough to overflow, which let reveal() scroll
+        // the entry field off the top of the screen.
+        child: Align(
+          widthFactor: 1,
+          heightFactor: 1,
+          child: Text(
+            label,
+            style: Type.rem(
+              1.05,
+              weight: primary ? Type.medium : Type.regular,
+            ).copyWith(color: primary ? style.ink : tokens.ink),
+          ),
         ),
       ),
     );

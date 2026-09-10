@@ -45,6 +45,7 @@ class GlassfinTokens {
     required this.accent,
     required this.accentText,
     required this.danger,
+    required this.focusRing,
     required this.ambientOpacity,
     required this.veilNear,
     required this.veilMid,
@@ -64,7 +65,7 @@ class GlassfinTokens {
   /// Hairline borders. Always a low-alpha [ink], never a solid grey.
   final Color edge;
 
-  /// Body text and the focus ring.
+  /// Body text, and the inverted surface of a primary action.
   final Color ink;
 
   /// Secondary text: shelf headings, settings values, metadata.
@@ -85,6 +86,16 @@ class GlassfinTokens {
 
   /// Destructive actions — Sign out, errors.
   final Color danger;
+
+  /// The focus ring.
+  ///
+  /// **Trail, not the page's ink.** The guide's blue is the one brand colour
+  /// with no other job in the interface, which is exactly what a system signal
+  /// wants: focus stops competing with content colour and cannot be mistaken
+  /// for part of the artwork it surrounds. Light uses a deepened Trail —
+  /// #5697DE manages only 2.75:1 on paper, below the 3:1 a non-text indicator
+  /// needs, while the deeper mix reaches 3.9:1.
+  final Color focusRing;
 
   /// Peak opacity of the ambient backdrop.
   final double ambientOpacity;
@@ -129,9 +140,17 @@ class GlassfinTokens {
   static const overEdge = Color(0x24F5F3EE); // rgba(245,243,238,0.14)
   static const overInk = Color(0xFFF5F3EE);
 
-  /// Content drawn *on* [overInk] — the glyph inside a card's watched tick.
-  /// Brand Night, and fixed like everything else in this family.
+  /// Content drawn *on* [overInk] — the glyph inside a card's watched tick, and
+  /// the label on an accent-filled button. Brand Night, and fixed like
+  /// everything else in this family.
   static const overOnInk = _Brand.night;
+
+  /// The focus ring over video. Trail again, so focus means the same thing on a
+  /// film as it does on a page.
+  ///
+  /// Worth watching on real content: a saturated blue ring has less to
+  /// distinguish it against a blue-heavy scene than Paper would.
+  static const overFocusRing = _Brand.trail;
 
   static const overInkDim = Color(0xA3F5F3EE); // rgba(245,243,238,0.64)
   static const overInkFaint = Color(0xFF8DA0A8);
@@ -178,6 +197,7 @@ class GlassfinTokens {
     accent: _Brand.accent,
     accentText: _Brand.accent,
     danger: Color(0xFFE0908C),
+    focusRing: _Brand.trail,
     ambientOpacity: 0.28,
     veilNear: 0.35,
     veilMid: 0.78,
@@ -222,6 +242,7 @@ class GlassfinTokens {
     accent: _Brand.lead,
     accentText: Color(0xFF986424), // deeper than Lead, for 4.5:1 on paper
     danger: Color(0xFFA6323F),
+    focusRing: Color(0xFF3F7CBF), // Trail deepened, for 3.9:1 on paper
     ambientOpacity: 0.16,
     veilNear: 0.62,
     veilMid: 0.90,

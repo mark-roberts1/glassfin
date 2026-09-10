@@ -10,12 +10,18 @@ library;
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:window_manager/window_manager.dart';
+
 import 'components/ambient.dart';
 import 'components/keyboard.dart';
+import 'components/transport.dart';
+import 'debug_capture.dart';
 import 'design/metrics.dart';
+import 'design/primary_style.dart';
 import 'design/theme.dart';
 import 'design/tokens.dart';
 import 'input/keyboard.dart';
@@ -24,6 +30,7 @@ import 'input/text_entry.dart';
 import 'jellyfin/client.dart';
 import 'jellyfin/models.dart';
 import 'jellyfin/session_store.dart';
+import 'nav/pointer.dart';
 import 'nav/policy.dart';
 import 'nav/registry.dart';
 import 'nav/routes.dart';
@@ -64,6 +71,8 @@ class _GlassfinAppState extends State<GlassfinApp> with WidgetsBindingObserver {
   RouteStack _routes = RouteStack.initial;
   String? _ambient;
   bool _menuOpen = false;
+  bool _settingsOpen = false;
+  bool _fullscreen = false;
 
   /// The keyboard sheet's session, when one is open.
   TextEntrySession? _modalEntry;
@@ -157,10 +166,49 @@ class _GlassfinAppState extends State<GlassfinApp> with WidgetsBindingObserver {
   }
 
   void _onPlaybackChanged() {
-    // A film that ends or is stopped takes the track menu with it; leaving it up
+    // A film that ends or is stopped takes its menus with it; leaving one up
     // over the screen underneath would be a modal nothing could dismiss.
-    if (_menuOpen && !(_playback?.isPlaying ?? false)) _menuOpen = false;
+    final playing = _playback?.isPlaying ?? false;
+    if (!playing) {
+      _menuOpen = false;
+      _settingsOpen = false;
+    }
     setState(() {});
+    if (playing) _keepFocusInTransport();
+  }
+
+  /// When the chrome appears, focus lands on the scrubber.
+  ///
+  /// That is what keeps left and right seeking: the router only hands the
+  /// directions to navigation when focus is on an actual button, so the
+  /// transport can be a toolbar without costing the gesture everyone already
+  /// knows. It also means the row is never on screen with nothing focused.
+  void _keepFocusInTransport() {
+    final playback = _playback;
+    if (playback == null || !playback.chromeVisible) return;
+    if (_menuOpen || _settingsOpen) return;
+
+    final focused = FocusManager.instance.primaryFocus;
+    final group = focused == null
+        ? null
+        : NavRegistry.instance.infoFor(focused)?.group;
+    const inPlayer = {
+      transportGroup,
+      transportTopGroup,
+      transportScrubGroup,
+      'skip',
+    };
+    if (group != null && inPlayer.contains(group)) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      NavRegistry.instance.focusGroup(transportScrubGroup);
+    });
+  }
+
+  Future<void> _toggleFullscreen() async {
+    final next = !_fullscreen;
+    setState(() => _fullscreen = next);
+    await windowManager.setFullScreen(next);
   }
 
   @override
@@ -237,8 +285,14 @@ class _GlassfinAppState extends State<GlassfinApp> with WidgetsBindingObserver {
       _restoreFocus();
       return true;
     }
+    if (_settingsOpen) {
+      setState(() => _settingsOpen = false);
+      _restoreFocus();
+      return true;
+    }
     if (_menuOpen) {
       setState(() => _menuOpen = false);
+      _restoreFocus();
       return true;
     }
     if (!_routes.canPop) return false;
@@ -300,7 +354,47 @@ class _GlassfinAppState extends State<GlassfinApp> with WidgetsBindingObserver {
         theme: GlassfinTheme.materialTheme(tokens),
         home: FocusTraversalGroup(
           policy: GlassfinTraversalPolicy(),
-          child: ColoredBox(color: tokens.ground, child: _body(tokens)),
+          // **The application's own text default, and it is load-bearing.**
+          //
+          // Inside a MaterialApp, text with no Material or Scaffold ancestor
+          // inherits Flutter's *error* text style — which carries a yellow
+          // double underline. Glassfin draws almost nothing with Material
+          // widgets, so nothing was supplying a real default, and every string
+          // in the interface picked up that underline. The Type styles override
+          // colour, size and family, so the decoration was the one property
+          // that survived, and it arrives with no console warning at all.
+          child: DefaultTextStyle(
+            style: Type.body.copyWith(
+              color: tokens.ink,
+              decoration: TextDecoration.none,
+            ),
+            child: RepaintBoundary(
+              key: captureKey,
+              child: ValueListenableBuilder<bool>(
+                // Rebuilds once, when the mouse first moves: every Focusable
+                // reads pointer mode to decide whether to show a cursor at all.
+                valueListenable: PointerMode.instance.active,
+                builder: (context, _, _) =>
+                    ValueListenableBuilder<PrimaryTreatment>(
+                      valueListenable: PrimaryStyle.current,
+                      builder: (context, treatment, _) => Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          ColoredBox(
+                            color: tokens.ground,
+                            child: _body(tokens),
+                          ),
+                          // Names the treatment in the corner, so an F12
+                          // capture says which one it is rather than needing to
+                          // be remembered.
+                          if (kDebugMode)
+                            _TreatmentBadge(treatment: treatment),
+                        ],
+                      ),
+                    ),
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -349,6 +443,11 @@ class _GlassfinAppState extends State<GlassfinApp> with WidgetsBindingObserver {
         setState(() => _menuOpen = false);
         _restoreFocus();
       },
+      settingsOpen: _settingsOpen,
+      onCloseSettings: () {
+        setState(() => _settingsOpen = false);
+        _restoreFocus();
+      },
       onSearch: () => _push(const SearchRoute()),
       onHome: () => setState(() => _routes = _routes.home()),
       onBack: _back,
@@ -384,6 +483,16 @@ class _GlassfinAppState extends State<GlassfinApp> with WidgetsBindingObserver {
                 setState(() => _menuOpen = false);
                 _restoreFocus();
               },
+              settingsOpen: _settingsOpen,
+              onOpenMenu: () => setState(() => _menuOpen = true),
+              onOpenSettings: () => setState(() => _settingsOpen = true),
+              onCloseSettings: () {
+                setState(() => _settingsOpen = false);
+                _restoreFocus();
+              },
+              onStop: () => unawaited(playback.stop()),
+              onToggleFullscreen: () => unawaited(_toggleFullscreen()),
+              fullscreen: _fullscreen,
             ),
 
           // Above the player: the keyboard is never wanted mid-film, but if a
@@ -475,6 +584,8 @@ class _InputHost extends StatelessWidget {
     this.menuOpen = false,
     this.onOpenMenu,
     this.onCloseMenu,
+    this.settingsOpen = false,
+    this.onCloseSettings,
     this.onSearch,
     this.onHome,
   });
@@ -487,6 +598,8 @@ class _InputHost extends StatelessWidget {
   final bool menuOpen;
   final VoidCallback? onOpenMenu;
   final VoidCallback? onCloseMenu;
+  final bool settingsOpen;
+  final VoidCallback? onCloseSettings;
   final VoidCallback? onSearch;
   final VoidCallback? onHome;
 
@@ -498,6 +611,8 @@ class _InputHost extends StatelessWidget {
       menuOpen: menuOpen,
       onOpenMenu: onOpenMenu,
       onCloseMenu: onCloseMenu,
+      settingsOpen: settingsOpen,
+      onCloseSettings: onCloseSettings,
       onSearch: onSearch,
       onHome: onHome,
       onBack: onBack,
@@ -508,6 +623,20 @@ class _InputHost extends StatelessWidget {
       onKeyEvent: (node, event) {
         if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
           return KeyEventResult.ignored;
+        }
+
+        // Debug builds only, and ahead of everything else so that no screen —
+        // including a text field, which eats printable keys — can swallow it.
+        if (kDebugMode && event.logicalKey == LogicalKeyboardKey.f12) {
+          unawaited(captureWindow());
+          return KeyEventResult.handled;
+        }
+
+        // Cycles the primary-action treatment being trialled. Temporary — see
+        // lib/design/primary_style.dart.
+        if (kDebugMode && event.logicalKey == LogicalKeyboardKey.f9) {
+          PrimaryStyle.cycle();
+          return KeyEventResult.handled;
         }
 
         // Text entry gets first refusal, exactly as the old `route()` did — but
@@ -587,6 +716,38 @@ class _KeyboardSheet extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Names the primary-action treatment currently being trialled. Debug only, and
+/// goes away with `lib/design/primary_style.dart` once one is chosen.
+class _TreatmentBadge extends StatelessWidget {
+  const _TreatmentBadge({required this.treatment});
+
+  final PrimaryTreatment treatment;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+
+    return Positioned(
+      top: 8,
+      right: 8,
+      child: IgnorePointer(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: tokens.raised,
+            border: Border.all(color: tokens.edge),
+            borderRadius: Radii.pill,
+          ),
+          child: Text(
+            'F9  ${treatment.label}',
+            style: Type.rem(0.74).copyWith(color: tokens.inkFaint),
+          ),
+        ),
+      ),
     );
   }
 }

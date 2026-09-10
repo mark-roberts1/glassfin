@@ -117,7 +117,9 @@ void main() {
         ),
         isNotNull,
       );
-      final barelyBehind = Rect.fromLTWH(-0.5, 100, 300, 450);
+      // Travel is measured between the facing edges, so "behind" means the
+      // candidate's left edge sits inside the origin's right edge.
+      final barelyBehind = Rect.fromLTWH(299.5, 100, 300, 450);
       expect(
         scoreCandidate(shelfA[0], barelyBehind, TraversalDirection.right),
         isNotNull,
@@ -125,10 +127,54 @@ void main() {
     });
 
     test('rejects a step further back than the tolerance', () {
-      final behind = Rect.fromLTWH(-2, 100, 300, 450);
+      final behind = Rect.fromLTWH(297, 100, 300, 450);
       expect(
         scoreCandidate(shelfA[0], behind, TraversalDirection.right),
         isNull,
+      );
+    });
+  });
+
+  group('travel is measured between the facing edges', () {
+    // The bug this guards against shipped once. Measuring leading edge to
+    // leading edge gives a same-row neighbour a travel of *zero* on a vertical
+    // move — legal, and cheaper than anything genuinely above — so Up walked
+    // sideways along the shelf and the header was unreachable.
+    test('a same-row neighbour is not a legal destination for up or down', () {
+      expect(
+        scoreCandidate(shelfA[0], shelfA[1], TraversalDirection.up),
+        isNull,
+      );
+      expect(
+        scoreCandidate(shelfA[1], shelfA[0], TraversalDirection.up),
+        isNull,
+      );
+      expect(
+        scoreCandidate(shelfA[0], shelfA[1], TraversalDirection.down),
+        isNull,
+      );
+    });
+
+    test('a distant header still beats a same-row neighbour', () {
+      // Home's chrome pills: far to the right, well above, sharing no column
+      // with the first card. They are the only thing up there, and Up must
+      // reach them.
+      final pill = Rect.fromLTWH(1000, 20, 120, 40);
+      final candidates = [shelfA[1], shelfA[2], pill];
+      expect(
+        bestCandidate(shelfA[0], candidates, TraversalDirection.up),
+        2,
+      );
+    });
+
+    test('the gap between boxes is the distance, not their offset', () {
+      // Two candidates whose left edges are equally far away, but one is much
+      // wider and therefore starts closer. The nearer *edge* should win.
+      final wide = Rect.fromLTWH(320, 100, 600, 450);
+      final near = Rect.fromLTWH(310, 100, 100, 450);
+      expect(
+        travelDistance(shelfA[0], near, TraversalDirection.right),
+        lessThan(travelDistance(shelfA[0], wide, TraversalDirection.right)),
       );
     });
   });

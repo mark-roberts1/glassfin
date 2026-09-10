@@ -1,5 +1,7 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 
+import '../nav/pointer.dart';
 import '../nav/registry.dart';
 import 'theme.dart';
 import 'tokens.dart';
@@ -162,13 +164,11 @@ class _FocusableState extends State<Focusable> {
     };
 
     final ringColour = widget.visual == FocusVisual.ringOnlyOverVideo
-        ? GlassfinTokens.overInk
-        : tokens.ink;
+        ? GlassfinTokens.overFocusRing
+        : tokens.focusRing;
 
+    // Depth only. **The ring is not a shadow** — see [_Ring].
     final shadows = <BoxShadow>[
-      // A spread-only shadow *is* the CSS `0 0 0 3px` ring: it draws outside the
-      // box, so it never eats into the artwork it surrounds.
-      if (on) BoxShadow(color: ringColour, spreadRadius: 3, blurRadius: 0),
       if (on)
         ...switch (widget.visual) {
           FocusVisual.artwork || FocusVisual.inverted => tokens.shadowFocus,
@@ -188,6 +188,25 @@ class _FocusableState extends State<Focusable> {
       child: widget.child(context, on),
     );
 
+    content = Stack(
+      // The ring is drawn outside the box, so the stack must not clip it.
+      clipBehavior: Clip.none,
+      children: [
+        content,
+        Positioned(
+          left: -ringWidth,
+          top: -ringWidth,
+          right: -ringWidth,
+          bottom: -ringWidth,
+          child: _Ring(
+            on: on,
+            colour: ringColour,
+            radius: _grown(widget.borderRadius, ringWidth),
+          ),
+        ),
+      ],
+    );
+
     if (scale != 1.0) {
       content = AnimatedScale(
         // Reduced motion is honoured for the ambient fade, scrolling, the
@@ -205,7 +224,91 @@ class _FocusableState extends State<Focusable> {
       onFocusChange: _onFocusChange,
       canRequestFocus: widget.enabled,
       skipTraversal: !widget.enabled,
-      child: content,
+      child: MouseRegion(
+        // Hidden until a real mouse moves: a television with no mouse must
+        // never show a cursor parked in the middle of a film.
+        cursor: PointerMode.instance.active.value
+            ? SystemMouseCursors.click
+            : SystemMouseCursors.none,
+        onHover: _onHover,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: _onTap,
+          child: content,
+        ),
+      ),
     );
   }
+
+  /// Hover focuses, but only once the mouse has actually been moved — see
+  /// [PointerMode].
+  void _onHover(PointerHoverEvent event) {
+    if (!PointerMode.instance.noteMove(event.position)) return;
+    if (!widget.enabled || _node.hasFocus) return;
+    _node.requestFocus();
+    NavRegistry.instance.remember(_node);
+    widget.onFocus?.call();
+    // **No reveal.** A trackpad already scrolls at the viewer's own pace, and
+    // auto-centring under a moving cursor reads as the row dodging away from
+    // it. Reveal is for pad moves, which step one card at a time.
+  }
+
+  void _onTap() {
+    if (!widget.enabled) return;
+    _node.requestFocus();
+    NavRegistry.instance.remember(_node);
+    widget.onSelect?.call();
+  }
 }
+
+/// The 3px focus ring, from `docs/ui-spec.md` §1.8.
+///
+/// **An outline, not a shadow, and the distinction is load-bearing.** The CSS
+/// this ports from was `box-shadow: 0 0 0 3px <ink>`, and the obvious Flutter
+/// translation — a [BoxShadow] with `spreadRadius: 3` and no blur — is wrong in
+/// one specific case that looks fine everywhere else.
+///
+/// A box shadow is a *filled* rounded rect painted behind the child. When the
+/// child is opaque you only ever see the 3px rim, so cards, pills and settings
+/// rows all looked correct. When the child is deliberately transparent — a quiet
+/// button, which is the "Back" and "Cancel" treatment — the fill shows straight
+/// through the whole element, turning it into a solid slab of ink with its own
+/// dimmed label now invisible on top of it.
+///
+/// Drawn as a border on a box inset by −3 instead, so it occupies the same
+/// pixels as the CSS did and never paints over anything.
+class _Ring extends StatelessWidget {
+  const _Ring({required this.on, required this.colour, required this.radius});
+
+  final bool on;
+  final Color colour;
+  final BorderRadius radius;
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+    child: AnimatedOpacity(
+      opacity: on ? 1 : 0,
+      duration: Motion.fast,
+      curve: Motion.ease,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: radius,
+          border: Border.all(color: colour, width: ringWidth),
+        ),
+      ),
+    ),
+  );
+}
+
+/// The ring's thickness. Three pixels at 1080p, which is what reads from a sofa
+/// without becoming a frame in its own right.
+const double ringWidth = 3;
+
+/// The ring sits [by] pixels outside the element, so its corners have to be that
+/// much rounder or they cut across the child's own.
+BorderRadius _grown(BorderRadius radius, double by) => BorderRadius.only(
+  topLeft: Radius.circular(radius.topLeft.x + by),
+  topRight: Radius.circular(radius.topRight.x + by),
+  bottomLeft: Radius.circular(radius.bottomLeft.x + by),
+  bottomRight: Radius.circular(radius.bottomRight.x + by),
+);
