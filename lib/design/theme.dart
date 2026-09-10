@@ -73,7 +73,8 @@ class GlassfinTheme extends InheritedWidget {
   }
 
   @override
-  bool updateShouldNotify(GlassfinTheme oldWidget) => tokens != oldWidget.tokens;
+  bool updateShouldNotify(GlassfinTheme oldWidget) =>
+      tokens != oldWidget.tokens;
 
   /// The Material theme underneath. Glassfin draws almost nothing with Material
   /// widgets, so this exists to make the defaults harmless — the right font, the

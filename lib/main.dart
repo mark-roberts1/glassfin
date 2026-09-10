@@ -120,10 +120,7 @@ class _ToolchainCheckState extends State<_ToolchainCheck> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                'Glassfin',
-                style: Type.display.copyWith(color: tokens.ink),
-              ),
+              Text('Glassfin', style: Type.display.copyWith(color: tokens.ink)),
               const SizedBox(height: 12),
               Text(
                 status,

@@ -121,10 +121,7 @@ void main() {
     test('forced picks nothing when there is no forced track', () {
       // Turning on full subtitles because no forced track exists would be a
       // different setting from the one the viewer chose.
-      expect(
-        chooseSubtitleStream(streams, SubtitleMode.forced, 'jpn'),
-        isNull,
-      );
+      expect(chooseSubtitleStream(streams, SubtitleMode.forced, 'jpn'), isNull);
     });
 
     test('preferred takes a forced track ahead of a plain one', () {

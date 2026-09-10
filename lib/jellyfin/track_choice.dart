@@ -79,7 +79,9 @@ MediaStream? chooseSubtitleStream(
 ) {
   if (mode == SubtitleMode.off) return null;
 
-  final subtitles = streams.where((s) => s.type == StreamType.subtitle).toList();
+  final subtitles = streams
+      .where((s) => s.type == StreamType.subtitle)
+      .toList();
   if (subtitles.isEmpty) return null;
 
   final inLanguage = preferred.isEmpty

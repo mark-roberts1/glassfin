@@ -10,7 +10,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
-import '../settings/playback_settings.dart';
+import '../settings/audio_settings.dart';
+import '../settings/video_settings.dart';
 import 'device_profile.dart';
 import 'models.dart';
 
@@ -34,7 +35,10 @@ class JellyfinException implements Exception {
 /// application, so it forgives as much as it can.
 String normaliseAddress(String address) {
   final trimmed = address.trim().replaceAll(RegExp(r'/+$'), '');
-  final hasScheme = RegExp(r'^https?://', caseSensitive: false).hasMatch(trimmed);
+  final hasScheme = RegExp(
+    r'^https?://',
+    caseSensitive: false,
+  ).hasMatch(trimmed);
   return hasScheme ? trimmed : 'http://$trimmed';
 }
 
@@ -42,7 +46,8 @@ class Jellyfin {
   Jellyfin({
     required this.credentials,
     required this.deviceId,
-    required this.settings,
+    required this.video,
+    required this.audio,
     this.deviceName = clientName,
     http.Client? httpClient,
   }) : _http = httpClient ?? http.Client();
@@ -58,7 +63,8 @@ class Jellyfin {
   /// Mutable, and read on every `playbackInfo` call rather than cached into a
   /// profile at construction — so changing a transcoding setting takes effect on
   /// the next thing played instead of after a restart.
-  PlaybackSettings settings;
+  VideoSettings video;
+  AudioSettings audio;
 
   void close() => _http.close();
 
@@ -251,9 +257,8 @@ class Jellyfin {
     final client = httpClient ?? http.Client();
     try {
       final response = await client.get(
-        Uri.parse(
-          '${normaliseAddress(address)}/QuickConnect/Connect',
-        ).replace(queryParameters: {'secret': secret}),
+        Uri.parse('${normaliseAddress(address)}/QuickConnect/Connect')
+            .replace(queryParameters: {'secret': secret}),
         headers: {
           'Authorization': authHeader(
             deviceId: deviceId,
@@ -331,10 +336,10 @@ class Jellyfin {
       parse: (json) => ItemsPage.fromJson(json as Map<String, Object?>),
     );
     return page.items
-        .where((view) => const {
-          'movies',
-          'tvshows',
-        }.contains(view.collectionType ?? ''))
+        .where(
+          (view) =>
+              const {'movies', 'tvshows'}.contains(view.collectionType ?? ''),
+        )
         .toList();
   }
 
@@ -488,7 +493,9 @@ class Jellyfin {
       tag = item.seriesPrimaryImageTag;
     }
     if (type == 'Backdrop') {
-      tag = item.backdropImageTags.isEmpty ? null : item.backdropImageTags.first;
+      tag = item.backdropImageTags.isEmpty
+          ? null
+          : item.backdropImageTags.first;
     }
     if (tag == null) return null;
 
@@ -535,7 +542,7 @@ class Jellyfin {
       'UserId': credentials.userId,
       'StartTimeTicks': startTicks,
       'AutoOpenLiveStream': true,
-      'DeviceProfile': buildDeviceProfile(settings),
+      'DeviceProfile': buildDeviceProfile(video: video, audio: audio),
       'AudioStreamIndex': ?audioStreamIndex,
       'SubtitleStreamIndex': ?subtitleStreamIndex,
     },

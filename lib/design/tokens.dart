@@ -156,19 +156,33 @@ class GlassfinTokens {
     veilNear: 0.35,
     veilMid: 0.78,
     shadowFocus: [
-      BoxShadow(offset: Offset(0, 18), blurRadius: 44, color: Color(0xB3000000)),
+      BoxShadow(
+        offset: Offset(0, 18),
+        blurRadius: 44,
+        color: Color(0xB3000000),
+      ),
     ],
     shadowLift: [
-      BoxShadow(offset: Offset(0, 10), blurRadius: 24, color: Color(0x99000000)),
+      BoxShadow(
+        offset: Offset(0, 10),
+        blurRadius: 24,
+        color: Color(0x99000000),
+      ),
     ],
     shadowPoster: [
-      BoxShadow(offset: Offset(0, 24), blurRadius: 60, color: Color(0x99000000)),
+      BoxShadow(
+        offset: Offset(0, 24),
+        blurRadius: 60,
+        color: Color(0x99000000),
+      ),
     ],
+    // dart format off
     fins: [
       Color(0xFFF4B46D), Color(0xFFE0BE76), Color(0xFFCDC586), Color(0xFFBEC998),
       Color(0xFFB4CBA9), Color(0xFFB1CAB6), Color(0xFFABCBBE), Color(0xFF9DCEC7),
       Color(0xFF8ED0D5), Color(0xFF83D0E6), Color(0xFF81CDF9), Color(0xFF95C7FF),
     ],
+    // dart format on
   );
 
   static const light = GlassfinTokens(
@@ -186,21 +200,31 @@ class GlassfinTokens {
     veilNear: 0.62,
     veilMid: 0.90,
     shadowFocus: [
-      BoxShadow(offset: Offset(0, 14), blurRadius: 32, color: Color(0x2E0E1518)),
+      BoxShadow(
+        offset: Offset(0, 14),
+        blurRadius: 32,
+        color: Color(0x2E0E1518),
+      ),
     ],
     shadowLift: [
       BoxShadow(offset: Offset(0, 8), blurRadius: 18, color: Color(0x240E1518)),
     ],
     shadowPoster: [
-      BoxShadow(offset: Offset(0, 20), blurRadius: 44, color: Color(0x380E1518)),
+      BoxShadow(
+        offset: Offset(0, 20),
+        blurRadius: 44,
+        color: Color(0x380E1518),
+      ),
     ],
     // Light's facets run Lead → Silver → Trail: the three brand colours with a
     // ten-step ramp interpolated between them.
+    // dart format off
     fins: [
       _Brand.lead,       Color(0xFFB28E3E), Color(0xFF9F9652), Color(0xFF8F9A67),
       Color(0xFF859C79), Color(0xFF819C87), _Brand.silver,     Color(0xFF6BA098),
       Color(0xFF59A1A7), Color(0xFF4BA1B9), Color(0xFF489ECC), _Brand.trail,
     ],
+    // dart format on
   );
 
   /// The ambient veil: a vertical wash plus a left-edge wash, in [ground].

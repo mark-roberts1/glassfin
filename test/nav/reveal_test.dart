@@ -24,15 +24,9 @@ void main() {
     });
 
     test('when it is inside the viewport by exactly the margin', () {
+      expect(offsetFor(currentOffset: 0, targetStart: revealMargin), isNull);
       expect(
-        offsetFor(currentOffset: 0, targetStart: revealMargin),
-        isNull,
-      );
-      expect(
-        offsetFor(
-          currentOffset: 0,
-          targetStart: 1000 - revealMargin - 300,
-        ),
+        offsetFor(currentOffset: 0, targetStart: 1000 - revealMargin - 300),
         isNull,
       );
     });

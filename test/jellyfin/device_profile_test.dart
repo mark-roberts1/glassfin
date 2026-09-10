@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:glassfin/jellyfin/device_profile.dart';
-import 'package:glassfin/settings/playback_settings.dart';
+import 'package:glassfin/settings/audio_settings.dart';
+import 'package:glassfin/settings/video_settings.dart';
 
 List<Map<String, Object?>> _list(Map<String, Object?> profile, String key) =>
     (profile[key] as List).cast<Map<String, Object?>>();
@@ -10,7 +11,16 @@ List<Map<String, Object?>> _conditions(Map<String, Object?> codecProfile) =>
     (codecProfile['Conditions'] as List).cast<Map<String, Object?>>();
 
 void main() {
-  const defaults = PlaybackSettings();
+  const defaults = VideoSettings();
+
+  /// The profile for a given pair of settings sections, each defaulting.
+  Map<String, Object?> profileFor({
+    VideoSettings? video,
+    AudioSettings? audio,
+  }) => buildDeviceProfile(
+    video: video ?? const VideoSettings(),
+    audio: audio ?? const AudioSettings(),
+  );
 
   group('direct play', () {
     test('is unconstrained, because mpv plays everything', () {
@@ -18,7 +28,7 @@ void main() {
       // means "anything". If a codec list ever appears here, someone has
       // misunderstood what this profile is for.
       final video = _list(
-        buildDeviceProfile(defaults),
+        profileFor(),
         'DirectPlayProfiles',
       ).firstWhere((p) => p['Type'] == 'Video');
 
@@ -26,8 +36,8 @@ void main() {
     });
 
     test('drops video entirely when everything is forced to transcode', () {
-      final profile = buildDeviceProfile(
-        defaults.copyWith(alwaysForceTranscode: true),
+      final profile = profileFor(
+        video: defaults.copyWith(alwaysForceTranscode: true),
       );
       final types = _list(
         profile,
@@ -76,14 +86,14 @@ void main() {
 
     test('cap audio channels at the configured layout', () {
       final stereo = _list(
-        buildDeviceProfile(defaults),
+        profileFor(),
         'TranscodingProfiles',
       ).firstWhere((p) => p['Type'] == 'Video');
       expect(stereo['MaxAudioChannels'], '2');
 
       final surround = _list(
-        buildDeviceProfile(
-          defaults.copyWith(channels: AudioChannels.surround51),
+        profileFor(
+          audio: const AudioSettings(channels: AudioChannels.surround51),
         ),
         'TranscodingProfiles',
       ).firstWhere((p) => p['Type'] == 'Video');
@@ -95,10 +105,7 @@ void main() {
     test('Dolby Vision is forced to transcode by default', () {
       // mpv renders DoVi profile 5 with the wrong colours, so this default is
       // deliberate. If it ever flips, it should be because DoVi actually works.
-      final codecProfiles = _list(
-        buildDeviceProfile(defaults),
-        'CodecProfiles',
-      );
+      final codecProfiles = _list(profileFor(), 'CodecProfiles');
 
       expect(codecProfiles, hasLength(1));
       expect(_conditions(codecProfiles.single).single, {
@@ -109,8 +116,8 @@ void main() {
     });
 
     test('nothing else is forced by default', () {
-      final profile = buildDeviceProfile(
-        defaults.copyWith(forceTranscodeDovi: false),
+      final profile = profileFor(
+        video: defaults.copyWith(forceTranscodeDovi: false),
       );
       expect(_list(profile, 'CodecProfiles'), isEmpty);
     });
@@ -119,8 +126,8 @@ void main() {
       // No stream has width 0, so the condition never holds and the codec can
       // never direct-play. It reads like a mistake and is not one.
       final codecProfiles = _list(
-        buildDeviceProfile(
-          defaults.copyWith(
+        profileFor(
+          video: defaults.copyWith(
             forceTranscodeDovi: false,
             forceTranscodeHevc: true,
           ),
@@ -141,8 +148,11 @@ void main() {
 
     test('AV1 uses the same idiom', () {
       final codecProfiles = _list(
-        buildDeviceProfile(
-          defaults.copyWith(forceTranscodeDovi: false, forceTranscodeAv1: true),
+        profileFor(
+          video: defaults.copyWith(
+            forceTranscodeDovi: false,
+            forceTranscodeAv1: true,
+          ),
         ),
         'CodecProfiles',
       );
@@ -153,8 +163,11 @@ void main() {
     test('4K caps direct play at 1080p with both dimensions', () {
       // Width alone would let a 3840x1080 ultrawide through.
       final codecProfiles = _list(
-        buildDeviceProfile(
-          defaults.copyWith(forceTranscodeDovi: false, forceTranscode4k: true),
+        profileFor(
+          video: defaults.copyWith(
+            forceTranscodeDovi: false,
+            forceTranscode4k: true,
+          ),
         ),
         'CodecProfiles',
       );
@@ -166,16 +179,19 @@ void main() {
 
     test('HDR and Hi10p invert their own conditions', () {
       final hdr = _list(
-        buildDeviceProfile(
-          defaults.copyWith(forceTranscodeDovi: false, forceTranscodeHdr: true),
+        profileFor(
+          video: defaults.copyWith(
+            forceTranscodeDovi: false,
+            forceTranscodeHdr: true,
+          ),
         ),
         'CodecProfiles',
       );
       expect(_conditions(hdr.single).single['Value'], 'SDR');
 
       final hi10p = _list(
-        buildDeviceProfile(
-          defaults.copyWith(
+        profileFor(
+          video: defaults.copyWith(
             forceTranscodeDovi: false,
             forceTranscodeHi10p: true,
           ),
@@ -191,8 +207,11 @@ void main() {
 
     test('toggles accumulate rather than replacing one another', () {
       final codecProfiles = _list(
-        buildDeviceProfile(
-          defaults.copyWith(forceTranscodeHevc: true, forceTranscode4k: true),
+        profileFor(
+          video: defaults.copyWith(
+            forceTranscodeHevc: true,
+            forceTranscode4k: true,
+          ),
         ),
         'CodecProfiles',
       );
@@ -202,7 +221,7 @@ void main() {
   });
 
   group('subtitles', () {
-    final subtitles = _list(buildDeviceProfile(defaults), 'SubtitleProfiles');
+    final subtitles = _list(profileFor(), 'SubtitleProfiles');
 
     Set<Object?> methodsFor(String format) => subtitles
         .where((p) => p['Format'] == format)
@@ -211,11 +230,10 @@ void main() {
 
     test('text formats can be sideloaded or switched in place', () {
       for (final format in ['srt', 'ass', 'sub', 'ssa', 'smi']) {
-        expect(
-          methodsFor(format),
-          {'External', 'Embed'},
-          reason: '$format should support both delivery methods',
-        );
+        expect(methodsFor(format), {
+          'External',
+          'Embed',
+        }, reason: '$format should support both delivery methods');
       }
     });
 
@@ -224,11 +242,9 @@ void main() {
       // offering External here would make the server hand over a URL that
       // cannot be rendered.
       for (final format in ['pgssub', 'dvdsub', 'dvbsub', 'pgs']) {
-        expect(
-          methodsFor(format),
-          {'Embed'},
-          reason: '$format is a bitmap format',
-        );
+        expect(methodsFor(format), {
+          'Embed',
+        }, reason: '$format is a bitmap format');
       }
     });
   });
@@ -236,15 +252,12 @@ void main() {
   test('identifies itself as Glassfin, not as Jellyfin Desktop', () {
     // The upstream profile this was ported from called itself Jellyfin Desktop;
     // that string reaches the server's dashboard, so it is corrected here.
-    expect(buildDeviceProfile(defaults)['Name'], 'Glassfin');
+    expect(profileFor()['Name'], 'Glassfin');
   });
 
   test('never bitrate-limits direct play', () {
     // A cap here makes the server transcode a file that would have played
     // untouched over a LAN.
-    expect(
-      buildDeviceProfile(defaults)['MaxStaticBitrate'],
-      greaterThanOrEqualTo(1000000000),
-    );
+    expect(profileFor()['MaxStaticBitrate'], greaterThanOrEqualTo(1000000000));
   });
 }

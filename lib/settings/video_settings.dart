@@ -1,49 +1,53 @@
-/// The playback settings that shape the device profile and mpv's configuration.
+/// The `video` settings section: how video is decoded, and what the server is
+/// asked to transcode.
 ///
-/// Keys and defaults are carried over from the Qt build's `glassfin.conf`
-/// (`video` and `audio` sections) rather than reinvented — a user upgrading
-/// should not silently get different transcoding behaviour.
+/// Keys and defaults are carried over from the Qt build's `glassfin.conf` rather
+/// than reinvented — someone moving between the two should not silently get
+/// different transcoding behaviour.
 library;
 
 import 'package:flutter/foundation.dart';
 
-/// How many channels to ask the server for, and what to tell mpv.
-enum AudioChannels {
-  stereo('2.0'),
-  surround51('5.1'),
-  surround71('7.1');
-
-  const AudioChannels(this.id);
-  final String id;
-
-  static AudioChannels fromId(String id) =>
-      AudioChannels.values.firstWhere((c) => c.id == id, orElse: () => stereo);
-}
-
 /// How mpv should decode video.
 enum HardwareDecoding {
-  /// `hwdec=no`.
   off('no'),
 
-  /// `hwdec=auto-copy` — **the default, and not the same as `auto`.**
+  /// `hwdec=auto-copy` — **the default, and deliberately not `auto`.**
   ///
-  /// `auto` hands mpv's own output a hardware surface, which does not survive
-  /// being handed to a texture. `auto-copy` decodes on the GPU and copies the
-  /// frame back, which costs bandwidth and works everywhere.
+  /// Hardware decode, but with the frame copied back so it still travels through
+  /// mpv's own shader pipeline. That keeps the scaler and colour management
+  /// working, which `auto` gives up in exchange for bandwidth.
   copy('auto-copy'),
 
-  /// `hwdec=auto`.
   direct('auto');
 
   const HardwareDecoding(this.mpvValue);
   final String mpvValue;
 }
 
+/// How mpv should keep video and audio in step.
+enum VideoSync {
+  /// The safe default: resample audio to match the video clock.
+  audio('audio'),
+
+  /// Judder-free when the display rate is a multiple of the content rate, which
+  /// is what refresh-rate switching exists to arrange.
+  displayResample('display-resample'),
+
+  displayAdrop('display-adrop');
+
+  const VideoSync(this.mpvValue);
+  final String mpvValue;
+}
+
 @immutable
-class PlaybackSettings {
-  const PlaybackSettings({
-    this.channels = AudioChannels.stereo,
+class VideoSettings {
+  const VideoSettings({
     this.hardwareDecoding = HardwareDecoding.copy,
+    this.videoSync = VideoSync.audio,
+    this.deinterlace = false,
+    this.cacheMegabytes = 75,
+    this.defaultPlaybackSpeed = 1.0,
     this.alwaysForceTranscode = false,
     this.allowTranscodeToHevc = false,
     this.preferTranscodeToH265 = false,
@@ -55,8 +59,14 @@ class PlaybackSettings {
     this.forceTranscode4k = false,
   });
 
-  final AudioChannels channels;
   final HardwareDecoding hardwareDecoding;
+  final VideoSync videoSync;
+  final bool deinterlace;
+
+  /// Demuxer cache, in mebibytes.
+  final int cacheMegabytes;
+
+  final double defaultPlaybackSpeed;
 
   /// Drops the video direct-play profile entirely, so the server transcodes
   /// everything. A debugging lever, not something to expose casually.
@@ -64,18 +74,17 @@ class PlaybackSettings {
 
   /// Offers HEVC as a transcode *target*.
   ///
-  /// This exists as a workaround for Dolby Vision content direct-playing when
-  /// it should not, rather than as a quality setting.
+  /// This exists as a workaround for Dolby Vision content direct-playing when it
+  /// should not, rather than as a quality setting.
   final bool allowTranscodeToHevc;
 
-  /// Puts HEVC first in the transcode-target list. Only meaningful with
+  /// Puts HEVC first in the transcode-target list. Only meaningful alongside
   /// [allowTranscodeToHevc].
   final bool preferTranscodeToH265;
 
   /// **Defaults to on.** mpv renders Dolby Vision profile 5 with the wrong
-  /// colours — everything comes out washed out and green-tinted — so the honest
-  /// thing is to ask the server to transcode it away. This is the flag to
-  /// revisit if real DoVi support ever lands.
+  /// colours, so the honest thing is to ask the server to transcode it away.
+  /// This is the flag to revisit if real DoVi support ever lands.
   final bool forceTranscodeDovi;
 
   final bool forceTranscodeHdr;
@@ -89,9 +98,12 @@ class PlaybackSettings {
   /// Caps direct play at 1080p.
   final bool forceTranscode4k;
 
-  PlaybackSettings copyWith({
-    AudioChannels? channels,
+  VideoSettings copyWith({
     HardwareDecoding? hardwareDecoding,
+    VideoSync? videoSync,
+    bool? deinterlace,
+    int? cacheMegabytes,
+    double? defaultPlaybackSpeed,
     bool? alwaysForceTranscode,
     bool? allowTranscodeToHevc,
     bool? preferTranscodeToH265,
@@ -101,9 +113,12 @@ class PlaybackSettings {
     bool? forceTranscodeHevc,
     bool? forceTranscodeAv1,
     bool? forceTranscode4k,
-  }) => PlaybackSettings(
-    channels: channels ?? this.channels,
+  }) => VideoSettings(
     hardwareDecoding: hardwareDecoding ?? this.hardwareDecoding,
+    videoSync: videoSync ?? this.videoSync,
+    deinterlace: deinterlace ?? this.deinterlace,
+    cacheMegabytes: cacheMegabytes ?? this.cacheMegabytes,
+    defaultPlaybackSpeed: defaultPlaybackSpeed ?? this.defaultPlaybackSpeed,
     alwaysForceTranscode: alwaysForceTranscode ?? this.alwaysForceTranscode,
     allowTranscodeToHevc: allowTranscodeToHevc ?? this.allowTranscodeToHevc,
     preferTranscodeToH265: preferTranscodeToH265 ?? this.preferTranscodeToH265,

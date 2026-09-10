@@ -42,7 +42,10 @@ void main() {
 
     test('picks the nearer of two cards to the right', () {
       expect(
-        bestCandidate(shelfA[0], [shelfA[2], shelfA[1]], TraversalDirection.right),
+        bestCandidate(shelfA[0], [
+          shelfA[2],
+          shelfA[1],
+        ], TraversalDirection.right),
         1, // shelfA[1], the nearer one, despite being listed second
       );
     });
@@ -86,10 +89,7 @@ void main() {
       // one further away.
       final near = card(60, 600);
       final far = card(0, 1200);
-      expect(
-        bestCandidate(shelfA[0], [far, near], TraversalDirection.down),
-        1,
-      );
+      expect(bestCandidate(shelfA[0], [far, near], TraversalDirection.down), 1);
     });
   });
 
@@ -110,8 +110,11 @@ void main() {
       // the tolerance this is a dead end that only appears at some window sizes.
       final ragged = Rect.fromLTWH(319.5, 99.5, 300, 450);
       expect(
-        scoreCandidate(ragged, shelfA[0].shift(const Offset(640, 0)),
-            TraversalDirection.right),
+        scoreCandidate(
+          ragged,
+          shelfA[0].shift(const Offset(640, 0)),
+          TraversalDirection.right,
+        ),
         isNotNull,
       );
       final barelyBehind = Rect.fromLTWH(-0.5, 100, 300, 450);

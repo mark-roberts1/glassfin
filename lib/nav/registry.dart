@@ -117,10 +117,11 @@ class NavRegistry {
 
   /// The nodes of [group], in registration order.
   List<FocusNode> nodesIn(String group) {
-    final nodes = _entries.entries
-        .where((e) => e.value.group == group && _isUsable(e.key))
-        .toList()
-      ..sort((a, b) => a.value.sequence.compareTo(b.value.sequence));
+    final nodes =
+        _entries.entries
+            .where((e) => e.value.group == group && _isUsable(e.key))
+            .toList()
+          ..sort((a, b) => a.value.sequence.compareTo(b.value.sequence));
     return [for (final e in nodes) e.key];
   }
 

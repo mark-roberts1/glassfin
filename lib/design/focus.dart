@@ -182,9 +182,7 @@ class _FocusableState extends State<Focusable> {
       curve: Motion.ease,
       decoration: BoxDecoration(
         borderRadius: widget.borderRadius,
-        color: widget.visual == FocusVisual.inverted && on
-            ? tokens.ink
-            : null,
+        color: widget.visual == FocusVisual.inverted && on ? tokens.ink : null,
         boxShadow: shadows,
       ),
       child: widget.child(context, on),

@@ -123,9 +123,10 @@ class GlassfinTraversalPolicy extends FocusTraversalPolicy {
   List<FocusNode> _candidates(FocusNode currentNode) {
     final scope = currentNode.nearestScope;
     if (scope == null) return const [];
-    return sortDescendants(scope.traversalDescendants, currentNode)
-        .where((node) => node != currentNode)
-        .toList();
+    return sortDescendants(
+      scope.traversalDescendants,
+      currentNode,
+    ).where((node) => node != currentNode).toList();
   }
 
   /// A node's global rectangle, or `null` if it is not laid out.
