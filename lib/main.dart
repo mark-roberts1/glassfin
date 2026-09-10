@@ -2,24 +2,29 @@ import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:window_manager/window_manager.dart';
 
-/// Phase 0 scaffolding.
+import 'design/metrics.dart';
+import 'design/theme.dart';
+import 'design/tokens.dart';
+import 'nav/policy.dart';
+
+/// Phase 0/1 scaffolding.
 ///
-/// This is not the app; it is a smoke test that proves the whole toolchain is
-/// wired up before any real work is built on top of it — the Linux runner
-/// builds, `window_manager` controls the window, Space Grotesk loads from
-/// `assets/fonts/`, and `media_kit` can actually reach `libmpv.so.2` and report
-/// its version. Phase 4 replaces this with the walking skeleton.
+/// This is not the app. It proves the toolchain end to end before real work is
+/// built on it — the Linux runner builds, `window_manager` controls the window,
+/// Space Grotesk loads from `assets/fonts/`, the design system resolves, and
+/// `media_kit` can actually reach `libmpv.so.2`. Phase 4 replaces it with the
+/// walking skeleton.
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
 
   await windowManager.ensureInitialized();
   await windowManager.waitUntilReadyToShow(
-    const WindowOptions(
-      size: Size(1280, 720),
+    WindowOptions(
+      size: const Size(1280, 720),
       center: true,
       title: 'Glassfin',
-      backgroundColor: Color(0xFF0B0B0D),
+      backgroundColor: GlassfinTokens.dark.ground,
     ),
     () async {
       await windowManager.show();
@@ -27,23 +32,33 @@ Future<void> main() async {
     },
   );
 
-  runApp(const _ScaffoldingApp());
+  runApp(const GlassfinApp());
 }
 
-class _ScaffoldingApp extends StatelessWidget {
-  const _ScaffoldingApp();
+class GlassfinApp extends StatelessWidget {
+  const GlassfinApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Glassfin',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        brightness: Brightness.dark,
-        fontFamily: 'Space Grotesk',
-        scaffoldBackgroundColor: const Color(0xFF0B0B0D),
+    // Dark is the default, not "follow the system": a television in a dark room
+    // is the case to be right about. Settings will make this a preference.
+    const tokens = GlassfinTokens.dark;
+
+    return GlassfinTheme(
+      tokens: tokens,
+      child: MaterialApp(
+        title: 'Glassfin',
+        debugShowCheckedModeBanner: false,
+        theme: GlassfinTheme.materialTheme(tokens),
+        // One traversal policy for the whole application. Every focusable sits
+        // under it, which is what makes "focus is never lost" enforceable rather
+        // than aspirational.
+        builder: (context, child) => FocusTraversalGroup(
+          policy: GlassfinTraversalPolicy(),
+          child: child ?? const SizedBox.shrink(),
+        ),
+        home: const _ToolchainCheck(),
       ),
-      home: const _ToolchainCheck(),
     );
   }
 }
@@ -85,6 +100,9 @@ class _ToolchainCheckState extends State<_ToolchainCheck> {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final metrics = context.metrics;
+
     final status = switch ((_mpvVersion, _error)) {
       (final String version, _) => version,
       (_, final Object error) => 'libmpv unavailable: $error',
@@ -92,31 +110,29 @@ class _ToolchainCheckState extends State<_ToolchainCheck> {
     };
 
     return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Glassfin',
-              style: TextStyle(
-                fontSize: 64,
-                fontWeight: FontWeight.w500,
-                letterSpacing: -1,
-                color: Color(0xFFF2F2F0),
+      backgroundColor: tokens.ground,
+      body: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: metrics.safeX,
+          vertical: metrics.safeY,
+        ),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Glassfin',
+                style: Type.display.copyWith(color: tokens.ink),
               ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              status,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w400,
-                color: _error == null
-                    ? const Color(0xFF8A8A94)
-                    : const Color(0xFFE05252),
+              const SizedBox(height: 12),
+              Text(
+                status,
+                style: Type.body.copyWith(
+                  color: _error == null ? tokens.inkFaint : tokens.danger,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
