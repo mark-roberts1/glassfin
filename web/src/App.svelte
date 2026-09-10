@@ -204,7 +204,12 @@
   // The shell composites this page over mpv, so the body has to stop painting
   // a background while video is playing. See app.css.
   $effect(() => {
-    document.body.classList.toggle('playing', playback.item !== null);
+    const playing = playback.item !== null;
+    document.body.classList.toggle('playing', playing);
+    // <html> also paints an opaque background (index.html, to avoid a flash
+    // before app.css loads) that body.playing alone never reaches, so mpv's
+    // picture stayed hidden behind it. Clear it here too.
+    document.documentElement.classList.toggle('playing', playing);
   });
 
   // Signing out must not leave a deep stack waiting on the other side of the

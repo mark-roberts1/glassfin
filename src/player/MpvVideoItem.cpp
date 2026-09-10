@@ -19,27 +19,20 @@ MpvVideoItem::MpvVideoItem(QQuickItem *parent)
 
 void MpvVideoItem::setPlayerComponent(PlayerComponent* player)
 {
-    qDebug() << "MpvVideoItem::setPlayerComponent called, mpvController():" << mpvController();
     m_player = player;
 
-    // When mpv is ready, give controller to PlayerComponent
+    // mpvController() is set synchronously in the constructor, so it is
+    // non-null immediately and useless as a readiness check. The real
+    // signal that mpv has a render context (created lazily from
+    // createFramebufferObject(), the first time the item actually gets
+    // painted) is the ready() signal below. Initializing PlayerComponent
+    // before that exists means its first setProperty("force-window", true)
+    // tries to open the VO with no render context yet, which mpv logs as
+    // "No render context set" and silently never retries for that session.
     connect(this, &MpvAbstractItem::ready, this, [this]() {
-        qDebug() << "MpvVideoItem ready() signal fired!";
-        if (m_player && mpvController()) {
-            qDebug() << "Setting mpv controller and initializing";
+        if (m_player) {
             m_player->setMpvController(mpvController());
             m_player->initializeMpv();
-        } else {
-            qWarning() << "ready() fired but m_player:" << m_player << "mpvController():" << mpvController();
         }
     });
-
-    // Check if already ready
-    if (mpvController()) {
-        qDebug() << "MpvVideoItem already ready, initializing now";
-        m_player->setMpvController(mpvController());
-        m_player->initializeMpv();
-    } else {
-        qDebug() << "MpvVideoItem not ready yet, waiting for ready() signal";
-    }
 }

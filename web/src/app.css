@@ -383,8 +383,20 @@ h3 {
  * there is no page left to be light or dark.
  */
 
+/* index.html sets an opaque background directly on <html> as a guard against
+   a flash of the wrong theme before this stylesheet loads. body.playing alone
+   never reaches it, so it must be cleared here too or it paints behind the
+   video for the entire time body is transparent.
+
+   The alpha is 1/255, not exactly 0: at exactly zero alpha, Chromium/Qt's
+   compositor appears to treat the layer as having nothing to draw and stops
+   producing new frames for it, freezing whatever was on screen the instant
+   before — imperceptible from a genuinely empty layer, but very different
+   behavior (confirmed live: an identical rgba(...,0) never updates again,
+   while rgba(...,0.004) keeps compositing normally). */
+html.playing,
 body.playing {
-  background: transparent;
+  background: rgba(0, 0, 0, 0.004);
 }
 
 body.playing .screen,

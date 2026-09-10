@@ -229,7 +229,12 @@ Window
     width: mainWindow.width
     height: mainWindow.height
     z: 100
-    backgroundColor: "transparent"
+    // Not literally "transparent" (alpha exactly 0): Chromium/Qt's compositor
+    // appears to treat an exactly-zero-alpha layer as having nothing to draw
+    // and stops producing new frames for it, freezing whatever was on screen
+    // the instant before. #AARRGGBB with alpha=1/255 is imperceptible from
+    // real transparency but keeps the layer compositing live.
+    backgroundColor: "#01000000"
 
     // this is needed to prevent intermittent(?) black screens when unminizing
     // or resumsing from suspend (linux/{x11/wayland}, possibly others).
