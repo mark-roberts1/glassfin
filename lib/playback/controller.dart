@@ -520,7 +520,12 @@ class PlaybackController extends ChangeNotifier {
       ),
     );
 
-    await _applyTracksToPlayer(streams, audioIndex, subtitleIndex);
+    await _applyTracksToPlayer(
+      streams,
+      audioIndex,
+      subtitleIndex,
+      transcoding: source.isTranscoding,
+    );
 
     _progressTimer = Timer.periodic(progressInterval, (_) {
       unawaited(_reportProgress());
@@ -630,19 +635,22 @@ class PlaybackController extends ChangeNotifier {
       SubtitleTrack('$ordinal', null, null);
 
   /// Applies the chosen tracks to mpv after a load.
+  ///
+  /// [transcoding] is not a detail: see [audioOrdinalForPlayer]. Selecting an
+  /// audio ordinal on a transcoded stream is how a track change turns into
+  /// silence.
   Future<void> _applyTracksToPlayer(
     List<MediaStream> streams,
     int? audioIndex,
-    int? subtitleIndex,
-  ) async {
-    if (audioIndex != null) {
-      final ordinal = relativeStreamIndex(
-        streams,
-        audioIndex,
-        StreamType.audio,
-      );
-      if (ordinal > 0) await _player.setAudioTrack(_embeddedAudio(ordinal));
-    }
+    int? subtitleIndex, {
+    required bool transcoding,
+  }) async {
+    final ordinal = audioOrdinalForPlayer(
+      streams,
+      audioIndex,
+      transcoding: transcoding,
+    );
+    if (ordinal != null) await _player.setAudioTrack(_embeddedAudio(ordinal));
     await _setSubtitleOnPlayer(streams, subtitleIndex);
   }
 
@@ -681,6 +689,15 @@ class PlaybackController extends ChangeNotifier {
 
     // Embedded: already inside the container mpv has open, addressed by its
     // ordinal among subtitle tracks rather than by Jellyfin's absolute index.
+    //
+    // **Unverified against a transcode.** This ordinal is counted in the
+    // *source's* stream list, which is the mistake that made audio silent — see
+    // [audioOrdinalForPlayer]. It is left alone here because a transcode should
+    // not reach this branch: the server reports text subtitles as `External`
+    // (it extracts them) and bitmap ones as `Encode` (it burns them in), both
+    // handled above. If `Embed` ever does arrive alongside a transcode, this
+    // ordinal will be counted against a list mpv cannot see and the wrong
+    // subtitle — or none — will appear.
     final ordinal = relativeStreamIndex(
       streams,
       absoluteIndex,

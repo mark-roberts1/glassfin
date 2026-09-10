@@ -17,6 +17,8 @@ MediaStream stream(
 );
 
 void main() {
+  _transcodeAudioOrdinal();
+
   group('relativeStreamIndex', () {
     // A realistic file: video is stream 0, then audio, then subtitles, with
     // Jellyfin numbering them all in one sequence.
@@ -191,6 +193,51 @@ void main() {
     test('round-trip a realistic resume point', () {
       const position = Duration(minutes: 37, seconds: 12, milliseconds: 340);
       expect(ticksToDuration(durationToTicks(position)), position);
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Regression: forcing a transcode and switching audio produced silence.
+//
+// `MediaStreams` describes the original file, but a transcoded stream carries
+// exactly one audio track — the one the server was asked for. Mapping the
+// chosen index to an ordinal in the source's list and handing that to mpv asks
+// for a track that is not there, and mpv answers with no audio rather than
+// falling back.
+// ---------------------------------------------------------------------------
+void _transcodeAudioOrdinal() {
+  group('audioOrdinalForPlayer', () {
+    // Twelve audio tracks, as a Blu-ray remux really has.
+    final streams = [
+      stream(0, StreamType.video),
+      for (var i = 1; i <= 12; i++) stream(i, StreamType.audio),
+      stream(13, StreamType.subtitle),
+    ];
+
+    test('direct play addresses the track by its ordinal', () {
+      expect(audioOrdinalForPlayer(streams, 1, transcoding: false), 1);
+      expect(audioOrdinalForPlayer(streams, 6, transcoding: false), 6);
+    });
+
+    test('a transcode selects nothing, whichever track was chosen', () {
+      // The whole bug: this used to return 6, and `aid=6` on a one-track
+      // stream is silence.
+      expect(audioOrdinalForPlayer(streams, 6, transcoding: true), isNull);
+      expect(audioOrdinalForPlayer(streams, 1, transcoding: true), isNull);
+      expect(audioOrdinalForPlayer(streams, 12, transcoding: true), isNull);
+    });
+
+    test('no chosen track means no instruction to mpv', () {
+      expect(audioOrdinalForPlayer(streams, null, transcoding: false), isNull);
+      expect(audioOrdinalForPlayer(streams, null, transcoding: true), isNull);
+    });
+
+    test('an index that is not in the list selects nothing', () {
+      // -1 would be handed to mpv as a track number otherwise.
+      expect(audioOrdinalForPlayer(streams, 99, transcoding: false), isNull);
+      // A subtitle index, asked for as audio.
+      expect(audioOrdinalForPlayer(streams, 13, transcoding: false), isNull);
     });
   });
 }

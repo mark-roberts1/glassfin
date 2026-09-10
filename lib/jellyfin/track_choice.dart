@@ -42,6 +42,28 @@ int relativeStreamIndex(
   return -1;
 }
 
+/// The mpv audio ordinal to apply after a load, or **null to leave mpv's own
+/// choice alone**.
+///
+/// The distinction exists entirely for transcodes. The server is handed
+/// `AudioStreamIndex` and builds the stream around it, so what mpv opens carries
+/// **exactly one audio track** — whichever one was asked for. But
+/// `MediaStreams` still describes the *original* file, so [relativeStreamIndex]
+/// against it returns the ordinal in a list mpv cannot see: asking for the sixth
+/// audio track of a stream that has one is silence, not a fallback to the first.
+///
+/// So on a transcode there is nothing to select and nothing to correct. Trust
+/// the server, which already did the selecting.
+int? audioOrdinalForPlayer(
+  List<MediaStream> streams,
+  int? absoluteIndex, {
+  required bool transcoding,
+}) {
+  if (transcoding || absoluteIndex == null) return null;
+  final ordinal = relativeStreamIndex(streams, absoluteIndex, StreamType.audio);
+  return ordinal > 0 ? ordinal : null;
+}
+
 bool _sameLanguage(MediaStream stream, String code) {
   final language = stream.language;
   return language != null && language.toLowerCase() == code.toLowerCase();
