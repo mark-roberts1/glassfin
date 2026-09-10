@@ -167,9 +167,11 @@ class NavRegistry {
   bool _isUsable(FocusNode node) =>
       node.context != null && node.canRequestFocus && !node.skipTraversal;
 
-  /// Test seam: drops all registrations and memory.
-  @visibleForTesting
-  void reset() {
+  /// Drops every registration and all group memory.
+  ///
+  /// Used on sign-out — a deep route stack full of another account's items
+  /// should not be waiting after the next sign-in — and by tests between cases.
+  void clear() {
     _entries.clear();
     _groupMemory.clear();
     _sequence = 0;

@@ -12,6 +12,7 @@ import 'dart:math';
 
 import 'package:path_provider/path_provider.dart';
 
+import '../settings/preferences.dart';
 import 'models.dart';
 
 class SessionStore {
@@ -56,6 +57,26 @@ class SessionStore {
   Future<void> clearCredentials() async {
     final file = await _file('credentials.json');
     if (file.existsSync()) await file.delete();
+  }
+
+  Future<Preferences> readPreferences() async {
+    final file = await _file('preferences.json');
+    if (!file.existsSync()) return const Preferences();
+    try {
+      return Preferences.fromJson(
+        jsonDecode(await file.readAsString()) as Map<String, Object?>,
+      );
+    } catch (_) {
+      // Defaults are always usable, so a damaged preferences file costs the
+      // viewer their settings rather than the application.
+      return const Preferences();
+    }
+  }
+
+  Future<void> writePreferences(Preferences preferences) async {
+    final file = await _file('preferences.json');
+    await file.parent.create(recursive: true);
+    await file.writeAsString(jsonEncode(preferences.toJson()));
   }
 
   /// A stable identifier for this installation.
