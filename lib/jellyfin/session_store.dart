@@ -14,6 +14,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../settings/preferences.dart';
 import '../settings/subtitle_appearance.dart';
+import '../settings/video_settings.dart';
 import 'models.dart';
 
 class SessionStore {
@@ -99,6 +100,28 @@ class SessionStore {
     final file = await _file('subtitles.json');
     await file.parent.create(recursive: true);
     await file.writeAsString(jsonEncode(appearance.toJson()));
+  }
+
+  /// Video settings live in their own file for the same reason subtitle
+  /// appearance does: they are not the viewer's preferences but the machine's —
+  /// what the device profile tells the server this client can play, and how mpv
+  /// is configured to play it.
+  Future<VideoSettings> readVideoSettings() async {
+    final file = await _file('video.json');
+    if (!file.existsSync()) return const VideoSettings();
+    try {
+      return VideoSettings.fromJson(
+        jsonDecode(await file.readAsString()) as Map<String, Object?>,
+      );
+    } catch (_) {
+      return const VideoSettings();
+    }
+  }
+
+  Future<void> writeVideoSettings(VideoSettings video) async {
+    final file = await _file('video.json');
+    await file.parent.create(recursive: true);
+    await file.writeAsString(jsonEncode(video.toJson()));
   }
 
   /// A stable identifier for this installation.

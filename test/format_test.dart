@@ -12,7 +12,10 @@ void main() {
     });
 
     test('adds the hours field above an hour, and pads the minutes', () {
-      expect(clock(const Duration(hours: 1, minutes: 2, seconds: 3)), '1:02:03');
+      expect(
+        clock(const Duration(hours: 1, minutes: 2, seconds: 3)),
+        '1:02:03',
+      );
       expect(clock(const Duration(hours: 2, minutes: 30)), '2:30:00');
     });
 

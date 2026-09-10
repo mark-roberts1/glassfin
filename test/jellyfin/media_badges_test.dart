@@ -2,11 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:glassfin/jellyfin/media_badges.dart';
 import 'package:glassfin/jellyfin/models.dart';
 
-MediaStream _video({
-  int? height,
-  String? codec,
-  String? range,
-}) => MediaStream(
+MediaStream _video({int? height, String? codec, String? range}) => MediaStream(
   index: 0,
   type: StreamType.video,
   height: height,
@@ -29,11 +25,8 @@ MediaStream _audio({
   isDefault: isDefault,
 );
 
-MediaStream _subtitle(int index, String? language) => MediaStream(
-  index: index,
-  type: StreamType.subtitle,
-  language: language,
-);
+MediaStream _subtitle(int index, String? language) =>
+    MediaStream(index: index, type: StreamType.subtitle, language: language);
 
 Item _itemWith(List<MediaStream> streams) => Item(
   id: 'id',
@@ -99,7 +92,10 @@ void main() {
 
   group('channelLabel', () {
     test('prefers the layout the file states', () {
-      expect(channelLabel(_audio(layout: '5.1(side)', channels: 6)), '5.1(SIDE)');
+      expect(
+        channelLabel(_audio(layout: '5.1(side)', channels: 6)),
+        '5.1(SIDE)',
+      );
     });
 
     test('falls back to a count', () {
@@ -148,13 +144,16 @@ void main() {
       expect(badges.subtitleLanguages, ['eng', 'fra']);
     });
 
-    test('an item with no media sources yields nothing rather than throwing', () {
-      final badges = mediaBadges(
-        const Item(id: 'id', name: 'Item', type: ItemKind.movie),
-      );
-      expect(badges.isEmpty, isTrue);
-      expect(badges.subtitleLanguages, isEmpty);
-    });
+    test(
+      'an item with no media sources yields nothing rather than throwing',
+      () {
+        final badges = mediaBadges(
+          const Item(id: 'id', name: 'Item', type: ItemKind.movie),
+        );
+        expect(badges.isEmpty, isTrue);
+        expect(badges.subtitleLanguages, isEmpty);
+      },
+    );
 
     test('video badges run resolution, range, codec', () {
       final badges = mediaBadges(

@@ -11,6 +11,7 @@
 /// drawing pixels and no amount of Flutter can restyle it.
 library;
 
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/widgets.dart';
 
 import '../components/logo.dart';
@@ -25,6 +26,7 @@ import '../nav/registry.dart';
 import '../settings/languages.dart';
 import '../settings/preferences.dart';
 import '../settings/subtitle_appearance.dart';
+import '../settings/video_settings.dart';
 
 /// One selectable value and the words for it.
 typedef Choice<T> = (T value, String label);
@@ -45,6 +47,13 @@ const List<Choice<SkipMode>> _skipModes = [
   (SkipMode.off, 'Off'),
   (SkipMode.prompt, 'Show a button'),
   (SkipMode.auto, 'Skip automatically'),
+];
+
+/// Worded as what it does to the server rather than as On/Off, because "On" on
+/// a row called "Force transcoding" leaves you guessing which way round it is.
+const List<Choice<bool>> _forceTranscode = [
+  (false, 'Off — direct play when possible'),
+  (true, 'On — re-encode everything'),
 ];
 
 List<Choice<String>> get _languageChoices => [
@@ -99,9 +108,11 @@ class SettingsScreen extends StatefulWidget {
   const SettingsScreen({
     required this.preferences,
     required this.subtitles,
+    required this.video,
     required this.credentials,
     required this.onPreferences,
     required this.onSubtitles,
+    required this.onVideo,
     required this.onSignOut,
     required this.onReset,
     required this.onBack,
@@ -110,9 +121,11 @@ class SettingsScreen extends StatefulWidget {
 
   final Preferences preferences;
   final SubtitleAppearance subtitles;
+  final VideoSettings video;
   final Credentials credentials;
   final void Function(Preferences next) onPreferences;
   final void Function(SubtitleAppearance next) onSubtitles;
+  final void Function(VideoSettings next) onVideo;
   final VoidCallback onSignOut;
   final VoidCallback onReset;
   final VoidCallback onBack;
@@ -300,6 +313,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ],
         ),
+
+        // **Debug builds only.** `alwaysForceTranscode` is documented in
+        // VideoSettings as "a debugging lever, not something to expose
+        // casually", and that is right: it makes the server re-encode
+        // everything, which on a 4K library is a great deal of work for no
+        // picture-quality gain. It is here because the direct-play and
+        // transcode paths share almost no code — audio switching keys on the
+        // source's TranscodingUrl, subtitles on each stream's DeliveryMethod —
+        // so testing one proves nothing about the other, and the library may
+        // contain nothing that transcodes on its own.
+        if (kDebugMode)
+          _Section(
+            title: 'Developer',
+            note:
+                'Not built into release. Takes effect on the next thing you '
+                'play, not the film already running — the device profile is '
+                'sent with each playback request.',
+            children: [
+              _CycleRow(
+                name: 'Force transcoding',
+                options: _forceTranscode,
+                current: widget.video.alwaysForceTranscode,
+                onCycle: (next) => widget.onVideo(
+                  widget.video.copyWith(alwaysForceTranscode: next),
+                ),
+              ),
+            ],
+          ),
       ],
     );
   }

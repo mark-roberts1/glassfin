@@ -161,10 +161,7 @@ void main() {
       // reach them.
       final pill = Rect.fromLTWH(1000, 20, 120, 40);
       final candidates = [shelfA[1], shelfA[2], pill];
-      expect(
-        bestCandidate(shelfA[0], candidates, TraversalDirection.up),
-        2,
-      );
+      expect(bestCandidate(shelfA[0], candidates, TraversalDirection.up), 2);
     });
 
     test('the gap between boxes is the distance, not their offset', () {

@@ -29,7 +29,10 @@ void main() {
 
     test('replaces a selection', () {
       final controller = TextEditingController(text: 'abcdef');
-      controller.selection = const TextSelection(baseOffset: 2, extentOffset: 5);
+      controller.selection = const TextSelection(
+        baseOffset: 2,
+        extentOffset: 5,
+      );
       _session(controller).insert('X');
       expect(controller.text, 'abXf');
       expect(controller.selection.baseOffset, 3);
@@ -56,7 +59,10 @@ void main() {
 
     test('deletes a selection whole', () {
       final controller = TextEditingController(text: 'abcdef');
-      controller.selection = const TextSelection(baseOffset: 1, extentOffset: 4);
+      controller.selection = const TextSelection(
+        baseOffset: 1,
+        extentOffset: 4,
+      );
       _session(controller).backspace();
       expect(controller.text, 'aef');
       expect(controller.selection.baseOffset, 1);

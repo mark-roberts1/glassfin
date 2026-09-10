@@ -63,6 +63,7 @@ class _GlassfinAppState extends State<GlassfinApp> with WidgetsBindingObserver {
   String? _deviceId;
   Preferences _preferences = const Preferences();
   SubtitleAppearance _subtitles = const SubtitleAppearance();
+  VideoSettings _video = const VideoSettings();
   Jellyfin? _client;
   PlaybackController? _playback;
   bool _ready = false;
@@ -107,6 +108,7 @@ class _GlassfinAppState extends State<GlassfinApp> with WidgetsBindingObserver {
     final deviceId = await _store.deviceId();
     final preferences = await _store.readPreferences();
     final subtitles = await _store.readSubtitleAppearance();
+    final video = await _store.readVideoSettings();
     final credentials = await _store.readCredentials();
 
     if (!mounted) return;
@@ -114,6 +116,7 @@ class _GlassfinAppState extends State<GlassfinApp> with WidgetsBindingObserver {
       _deviceId = deviceId;
       _preferences = preferences;
       _subtitles = subtitles;
+      _video = video;
       _ready = true;
     });
     if (credentials != null) _signIn(credentials, persist: false);
@@ -127,7 +130,7 @@ class _GlassfinAppState extends State<GlassfinApp> with WidgetsBindingObserver {
     final client = Jellyfin(
       credentials: credentials,
       deviceId: _deviceId ?? 'unknown',
-      video: const VideoSettings(),
+      video: _video,
       audio: const AudioSettings(),
     );
 
@@ -138,7 +141,7 @@ class _GlassfinAppState extends State<GlassfinApp> with WidgetsBindingObserver {
       _playback = PlaybackController(
         client: client,
         preferences: _preferences,
-        video: const VideoSettings(),
+        video: _video,
         audio: const AudioSettings(),
         subtitles: _subtitles,
       )..addListener(_onPlaybackChanged);
@@ -247,6 +250,18 @@ class _GlassfinAppState extends State<GlassfinApp> with WidgetsBindingObserver {
     // already playing rather than only on the next one.
     _playback?.updateSettings(subtitles: next);
     unawaited(_store.writeSubtitleAppearance(next));
+  }
+
+  void _setVideo(VideoSettings next) {
+    setState(() => _video = next);
+    // **The client as well as the player.** Half of these settings are mpv
+    // properties, which `updateSettings` applies at once; the other half only
+    // exist as conditions in the device profile, and that is built fresh for
+    // each `PlaybackInfo` request from `Jellyfin.video`. Updating one and not
+    // the other is how a transcode setting ends up appearing to do nothing.
+    _client?.video = next;
+    _playback?.updateSettings(video: next);
+    unawaited(_store.writeVideoSettings(next));
   }
 
   // ---------------------------------------------------------------------------
@@ -512,9 +527,11 @@ class _GlassfinAppState extends State<GlassfinApp> with WidgetsBindingObserver {
         SettingsRoute() => SettingsScreen(
           preferences: _preferences,
           subtitles: _subtitles,
+          video: _video,
           credentials: client.credentials,
           onPreferences: _setPreferences,
           onSubtitles: _setSubtitles,
+          onVideo: _setVideo,
           onSignOut: _signOut,
           onReset: () => _setPreferences(const Preferences()),
           onBack: _back,

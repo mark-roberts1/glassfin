@@ -28,8 +28,8 @@ void main() {
     // The keyboard is designed for a television, and the test harness defaults
     // to an 800x600 window. Sized generously so an overflow here would be the
     // widget's fault rather than the harness's.
-    final view = TestWidgetsFlutterBinding.instance.platformDispatcher
-        .implicitView!;
+    final view =
+        TestWidgetsFlutterBinding.instance.platformDispatcher.implicitView!;
     view.physicalSize = const Size(1920, 2400);
     view.devicePixelRatio = 1;
     addTearDown(view.resetPhysicalSize);

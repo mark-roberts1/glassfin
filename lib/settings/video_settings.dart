@@ -129,6 +129,89 @@ class VideoSettings {
     forceTranscodeAv1: forceTranscodeAv1 ?? this.forceTranscodeAv1,
     forceTranscode4k: forceTranscode4k ?? this.forceTranscode4k,
   );
+
+  /// Enums are stored by **name**, not index: a reordering of
+  /// [HardwareDecoding] would otherwise silently change what a stored file
+  /// means, and `auto-copy` becoming `auto` is exactly the kind of change that
+  /// is invisible until a specific file will not play.
+  Map<String, Object?> toJson() => {
+    'hardwareDecoding': hardwareDecoding.name,
+    'videoSync': videoSync.name,
+    'deinterlace': deinterlace,
+    'cacheMegabytes': cacheMegabytes,
+    'defaultPlaybackSpeed': defaultPlaybackSpeed,
+    'alwaysForceTranscode': alwaysForceTranscode,
+    'allowTranscodeToHevc': allowTranscodeToHevc,
+    'preferTranscodeToH265': preferTranscodeToH265,
+    'forceTranscodeDovi': forceTranscodeDovi,
+    'forceTranscodeHdr': forceTranscodeHdr,
+    'forceTranscodeHi10p': forceTranscodeHi10p,
+    'forceTranscodeHevc': forceTranscodeHevc,
+    'forceTranscodeAv1': forceTranscodeAv1,
+    'forceTranscode4k': forceTranscode4k,
+  };
+
+  /// Every field falls back to its default, so a file written by an older build
+  /// — or one missing a key entirely — loads rather than throwing.
+  factory VideoSettings.fromJson(Map<String, Object?> json) {
+    const defaults = VideoSettings();
+    bool flag(String key, bool fallback) =>
+        json[key] is bool ? json[key]! as bool : fallback;
+
+    return VideoSettings(
+      hardwareDecoding: _byName(
+        HardwareDecoding.values,
+        json['hardwareDecoding'],
+        defaults.hardwareDecoding,
+      ),
+      videoSync: _byName(
+        VideoSync.values,
+        json['videoSync'],
+        defaults.videoSync,
+      ),
+      deinterlace: flag('deinterlace', defaults.deinterlace),
+      cacheMegabytes: json['cacheMegabytes'] is int
+          ? json['cacheMegabytes']! as int
+          : defaults.cacheMegabytes,
+      defaultPlaybackSpeed: json['defaultPlaybackSpeed'] is num
+          ? (json['defaultPlaybackSpeed']! as num).toDouble()
+          : defaults.defaultPlaybackSpeed,
+      alwaysForceTranscode: flag(
+        'alwaysForceTranscode',
+        defaults.alwaysForceTranscode,
+      ),
+      allowTranscodeToHevc: flag(
+        'allowTranscodeToHevc',
+        defaults.allowTranscodeToHevc,
+      ),
+      preferTranscodeToH265: flag(
+        'preferTranscodeToH265',
+        defaults.preferTranscodeToH265,
+      ),
+      forceTranscodeDovi: flag(
+        'forceTranscodeDovi',
+        defaults.forceTranscodeDovi,
+      ),
+      forceTranscodeHdr: flag('forceTranscodeHdr', defaults.forceTranscodeHdr),
+      forceTranscodeHi10p: flag(
+        'forceTranscodeHi10p',
+        defaults.forceTranscodeHi10p,
+      ),
+      forceTranscodeHevc: flag(
+        'forceTranscodeHevc',
+        defaults.forceTranscodeHevc,
+      ),
+      forceTranscodeAv1: flag('forceTranscodeAv1', defaults.forceTranscodeAv1),
+      forceTranscode4k: flag('forceTranscode4k', defaults.forceTranscode4k),
+    );
+  }
+
+  static T _byName<T extends Enum>(List<T> values, Object? name, T fallback) {
+    for (final value in values) {
+      if (value.name == name) return value;
+    }
+    return fallback;
+  }
 }
 
 /// How the picture is fitted to the panel — the reference client's "Aspect
