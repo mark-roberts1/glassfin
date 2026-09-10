@@ -235,8 +235,8 @@ class _ScrubBar extends StatelessWidget {
             // Seeking from a D-pad is left and right, which the router hands
             // to this group rather than to navigation.
             onSelect: playback.togglePause,
-            child: (context, focused) => _Track(
-              focused: focused,
+            child: (context, focused) => _Slider(
+              active: focused,
               fraction: fraction,
               onScrub: (at) => playback.seekTo(
                 Duration(milliseconds: (duration.inMilliseconds * at).round()),
@@ -253,18 +253,27 @@ class _ScrubBar extends StatelessWidget {
   }
 }
 
-class _Track extends StatelessWidget {
-  const _Track({
-    required this.focused,
+/// **Both of this transport's sliders**, so that they cannot drift apart.
+///
+/// The scrub bar and the volume bar are the same control at two lengths: a
+/// track, a fill, a head, click and drag to set, and a small growth when the
+/// viewer is on it. They were written separately once and immediately diverged —
+/// one grew a head and gestures while the other stayed a read-out.
+class _Slider extends StatelessWidget {
+  const _Slider({
+    required this.active,
     required this.fraction,
     required this.onScrub,
   });
 
-  /// Focused, the bar thickens and its head grows — the same "grow a little"
+  /// Focused for the scrubber, hovered for the volume bar — whichever "the
+  /// viewer is on this" means for the input in their hand.
+  ///
+  /// Active, the bar thickens and its head grows: the same "grow a little"
   /// signal the icon controls use, in the one shape that cannot scale. A
-  /// full-width bar under an [AnimatedScale] would push the clocks either side
-  /// of it off their baseline.
-  final bool focused;
+  /// full-width bar under an [AnimatedScale] would push whatever sits either
+  /// side of it off their baseline.
+  final bool active;
 
   final double fraction;
 
@@ -274,9 +283,9 @@ class _Track extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) => GestureDetector(
-      // **Click and drag to seek.** The bar looks exactly like a slider, and a
+      // **Click and drag to set.** The bar looks exactly like a slider, and a
       // slider that does nothing when you drag it reads as a broken control
-      // rather than as one meant for a remote. The D-pad path is left/right;
+      // rather than as one meant for a remote. The D-pad path is elsewhere;
       // this is the same action for the input actually in the viewer's hand.
       behavior: HitTestBehavior.opaque,
       onTapDown: (details) =>
@@ -286,9 +295,9 @@ class _Track extends StatelessWidget {
       onHorizontalDragUpdate: (details) =>
           _scrub(details.localPosition.dx, constraints.maxWidth),
       child: SizedBox(
-        // Room for the head at its focused size, which overflows the track it
-        // runs along. Fixed rather than growing with focus: a bar that changed
-        // height would move the whole control row under the viewer.
+        // Room for the head at its active size, which overflows the track it
+        // runs along. Fixed rather than growing: a bar that changed height
+        // would move the whole control row under the viewer.
         height: 20,
         child: Stack(
           alignment: Alignment.centerLeft,
@@ -297,7 +306,7 @@ class _Track extends StatelessWidget {
             AnimatedContainer(
               duration: Motion.fast,
               curve: Motion.ease,
-              height: focused ? 8 : 5,
+              height: active ? 8 : 5,
               child: DecoratedBox(
                 decoration: const BoxDecoration(
                   color: GlassfinTokens.overTrack,
@@ -318,12 +327,12 @@ class _Track extends StatelessWidget {
             // The head is what the eye tracks while seeking; the fill alone is too
             // subtle to follow at a distance.
             Positioned(
-              left: constraints.maxWidth * fraction - (focused ? 9 : 7),
+              left: constraints.maxWidth * fraction - (active ? 9 : 7),
               child: AnimatedContainer(
                 duration: Motion.fast,
                 curve: Motion.ease,
-                width: focused ? 18 : 14,
-                height: focused ? 18 : 14,
+                width: active ? 18 : 14,
+                height: active ? 18 : 14,
                 decoration: const BoxDecoration(
                   shape: BoxShape.circle,
                   color: GlassfinTokens.overInk,
@@ -467,18 +476,18 @@ class _Volume extends StatelessWidget {
   }
 }
 
-/// The volume bar, which is **draggable**.
+/// The volume bar: **the scrub bar's [_Slider], at 5rem.**
 ///
 /// It was drawn as a read-out beside the button and nothing else, which is the
 /// same mistake the scrub bar made: a control shaped exactly like a slider that
 /// ignores a drag reads as broken, not as one meant for a remote.
 ///
-/// Deliberately **not** focusable. Left and right inside the transport row are
-/// spoken for by navigation, so a focusable bar would be one the D-pad could
-/// land on and then not be able to move — a worse dead end than not stopping
-/// there at all. The button beside it is the pad's path, and it wraps through
-/// the whole range on its own.
-class _VolumeBar extends StatelessWidget {
+/// Deliberately **not** focusable, which is why it grows on hover rather than on
+/// focus. Left and right inside the transport row are spoken for by navigation,
+/// so a focusable bar would be one the D-pad could land on and then not be able
+/// to move — a worse dead end than not stopping there at all. The button beside
+/// it is the pad's path, and it wraps through the whole range on its own.
+class _VolumeBar extends StatefulWidget {
   const _VolumeBar({required this.level, required this.onSet});
 
   /// 0–100, mpv's own scale.
@@ -487,51 +496,25 @@ class _VolumeBar extends StatelessWidget {
   final void Function(double level) onSet;
 
   @override
+  State<_VolumeBar> createState() => _VolumeBarState();
+}
+
+class _VolumeBarState extends State<_VolumeBar> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) => SizedBox(
     width: Metrics.rem(5),
-    child: LayoutBuilder(
-      builder: (context, constraints) => GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTapDown: (details) =>
-            _set(details.localPosition.dx, constraints.maxWidth),
-        onHorizontalDragStart: (details) =>
-            _set(details.localPosition.dx, constraints.maxWidth),
-        onHorizontalDragUpdate: (details) =>
-            _set(details.localPosition.dx, constraints.maxWidth),
-        child: SizedBox(
-          // A 4px bar is not a pointer target. The box takes the hit; the bar
-          // is centred inside it and stays 4px.
-          height: 20,
-          child: Center(
-            child: SizedBox(
-              height: 4,
-              child: DecoratedBox(
-                decoration: const BoxDecoration(
-                  color: GlassfinTokens.overTrack,
-                  borderRadius: Radii.pill,
-                ),
-                child: FractionallySizedBox(
-                  alignment: Alignment.centerLeft,
-                  widthFactor: (level / 100).clamp(0.0, 1.0),
-                  child: const DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: GlassfinTokens.overInk,
-                      borderRadius: Radii.pill,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
+    child: MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: _Slider(
+        active: _hovered,
+        fraction: (widget.level / 100).clamp(0.0, 1.0),
+        onScrub: (at) => widget.onSet(at * 100),
       ),
     ),
   );
-
-  void _set(double dx, double width) {
-    if (width <= 0) return;
-    onSet((dx / width).clamp(0.0, 1.0) * 100);
-  }
 }
 
 class _IconButton extends StatelessWidget {
