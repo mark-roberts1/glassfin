@@ -460,10 +460,49 @@ class _Volume extends StatelessWidget {
             playback.volume >= 100 ? 0 : playback.volume + _step,
           ),
         ),
-        SizedBox(
-          width: Metrics.rem(5),
-          child: Align(
-            alignment: Alignment.centerLeft,
+        _VolumeBar(level: playback.volume, onSet: playback.setVolume),
+        SizedBox(width: Metrics.rem(0.6)),
+      ],
+    );
+  }
+}
+
+/// The volume bar, which is **draggable**.
+///
+/// It was drawn as a read-out beside the button and nothing else, which is the
+/// same mistake the scrub bar made: a control shaped exactly like a slider that
+/// ignores a drag reads as broken, not as one meant for a remote.
+///
+/// Deliberately **not** focusable. Left and right inside the transport row are
+/// spoken for by navigation, so a focusable bar would be one the D-pad could
+/// land on and then not be able to move — a worse dead end than not stopping
+/// there at all. The button beside it is the pad's path, and it wraps through
+/// the whole range on its own.
+class _VolumeBar extends StatelessWidget {
+  const _VolumeBar({required this.level, required this.onSet});
+
+  /// 0–100, mpv's own scale.
+  final double level;
+
+  final void Function(double level) onSet;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: Metrics.rem(5),
+    child: LayoutBuilder(
+      builder: (context, constraints) => GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: (details) =>
+            _set(details.localPosition.dx, constraints.maxWidth),
+        onHorizontalDragStart: (details) =>
+            _set(details.localPosition.dx, constraints.maxWidth),
+        onHorizontalDragUpdate: (details) =>
+            _set(details.localPosition.dx, constraints.maxWidth),
+        child: SizedBox(
+          // A 4px bar is not a pointer target. The box takes the hit; the bar
+          // is centred inside it and stays 4px.
+          height: 20,
+          child: Center(
             child: SizedBox(
               height: 4,
               child: DecoratedBox(
@@ -473,7 +512,7 @@ class _Volume extends StatelessWidget {
                 ),
                 child: FractionallySizedBox(
                   alignment: Alignment.centerLeft,
-                  widthFactor: (playback.volume / 100).clamp(0.0, 1.0),
+                  widthFactor: (level / 100).clamp(0.0, 1.0),
                   child: const DecoratedBox(
                     decoration: BoxDecoration(
                       color: GlassfinTokens.overInk,
@@ -485,9 +524,13 @@ class _Volume extends StatelessWidget {
             ),
           ),
         ),
-        SizedBox(width: Metrics.rem(0.6)),
-      ],
-    );
+      ),
+    ),
+  );
+
+  void _set(double dx, double width) {
+    if (width <= 0) return;
+    onSet((dx / width).clamp(0.0, 1.0) * 100);
   }
 }
 
