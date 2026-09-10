@@ -119,6 +119,37 @@ class GlassfinTokens {
   bool get isDark => brightness == Brightness.dark;
 
   // ---------------------------------------------------------------------------
+  // The primary action.
+  //
+  // Derived rather than stored: these are compositions of the role tokens above,
+  // and writing them as fields would mean two more entries in each theme that
+  // could drift apart from the gold they are made of.
+  //
+  // **Outlined, not filled.** The near-white primary Glassfin started with was
+  // inherited from the old Svelte app's `.primary { background: var(--ink) }` —
+  // it was never from the style guide, which is an identity guide and says
+  // nothing about buttons. Filling the largest control on the screen with the
+  // brightest colour in the palette makes it the brightest *object* in a dark
+  // room, which is the one thing a television interface cannot afford. A gold
+  // rule and a gold label on [raised] carries the same "this is the thing you
+  // came to do" without anything on screen exceeding the brightness of body
+  // text. Four treatments were trialled on the actual panel; this one won.
+  // ---------------------------------------------------------------------------
+
+  /// The surface of a primary action: [raised], the same as any other button.
+  /// The signal is the gold, not the fill.
+  Color get primaryFill => raised;
+
+  /// Its label — [accentText], which is one of the two places gold appears as
+  /// text.
+  Color get primaryInk => accentText;
+
+  /// Its rule. [accentText] rather than [accent] so the rule and the label are
+  /// the same gold: in dark they are already the same colour, and in light the
+  /// deeper gold takes the boundary from 2.5:1 against `raised` to 4.5:1.
+  Color get primaryBorder => accentText;
+
+  // ---------------------------------------------------------------------------
   // The over* family — identical in both themes.
   //
   // A photograph has no light mode. The transport, the track menu, the skip

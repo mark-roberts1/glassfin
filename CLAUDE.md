@@ -206,7 +206,8 @@ Three layers, and it is worth understanding before adding one:
 - **Brand palette** — Ink, Paper, Lead, Silver, Trail, Accent, plus the greys. **Never referenced
   by a widget.**
 - **Role tokens** — `ground`, `raised`, `edge`, `ink`, `inkDim`, `inkFaint`, `accent`,
-  `accentText`, `danger`, and the shadows. Redefined for light. **This is what widgets use.**
+  `accentText`, `danger`, `focusRing`, the `primary*` trio, and the shadows. Redefined for light.
+  **This is what widgets use.**
 - **`over*`** — for anything that floats over video or over artwork.
 
 Type is Space Grotesk, 400 and 500. **500 is the heaviest weight that exists.** A

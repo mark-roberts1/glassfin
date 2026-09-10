@@ -15,7 +15,6 @@ import 'package:flutter/widgets.dart';
 
 import '../design/focus.dart' show Focusable, FocusVisual, ringWidth;
 import '../design/metrics.dart';
-import '../design/primary_style.dart';
 import '../design/theme.dart';
 import '../design/tokens.dart';
 import '../input/text_entry.dart';
@@ -85,8 +84,7 @@ class _OnScreenKeyboardState extends State<OnScreenKeyboard> {
 
   /// What a key actually types — lowercase unless shift is on. Symbols are
   /// unaffected by it.
-  String _typed(String key) =>
-      _symbolPage || _shift ? key : key.toLowerCase();
+  String _typed(String key) => _symbolPage || _shift ? key : key.toLowerCase();
 
   @override
   Widget build(BuildContext context) {
@@ -180,10 +178,7 @@ class _EntryField extends StatelessWidget {
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: shown.isNotEmpty
                       ? [
-                          Text(
-                            shown,
-                            style: style.copyWith(color: tokens.ink),
-                          ),
+                          Text(shown, style: style.copyWith(color: tokens.ink)),
                           const _Caret(key: caretKey),
                         ]
                       : [
@@ -214,8 +209,7 @@ class _Caret extends StatefulWidget {
   State<_Caret> createState() => _CaretState();
 }
 
-class _CaretState extends State<_Caret>
-    with SingleTickerProviderStateMixin {
+class _CaretState extends State<_Caret> with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
     duration: caretBlink,
@@ -389,9 +383,8 @@ class _Key extends StatelessWidget {
         ),
         child: Text(
           label,
-          style: Type.rem(small ? 0.85 : 1.05).copyWith(
-            color: active ? tokens.ground : tokens.ink,
-          ),
+          style: Type.rem(small ? 0.85 : 1.05)
+              .copyWith(color: active ? tokens.ground : tokens.ink),
         ),
       ),
     );
@@ -438,7 +431,6 @@ class _Control extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    final style = PrimaryStyle.resolve(tokens);
 
     return Focusable(
       // A separate group from the keys, so that the keyboard's own focus memory
@@ -453,8 +445,10 @@ class _Control extends StatelessWidget {
           vertical: Metrics.rem(0.7),
         ),
         decoration: BoxDecoration(
-          color: primary ? style.fill : tokens.raised,
-          border: Border.all(color: primary ? style.border : tokens.edge),
+          color: primary ? tokens.primaryFill : tokens.raised,
+          border: Border.all(
+            color: primary ? tokens.primaryBorder : tokens.edge,
+          ),
           borderRadius: Radii.br,
         ),
         // Align rather than Container.alignment — see GlassButton. With the
@@ -469,7 +463,7 @@ class _Control extends StatelessWidget {
             style: Type.rem(
               1.05,
               weight: primary ? Type.medium : Type.regular,
-            ).copyWith(color: primary ? style.ink : tokens.ink),
+            ).copyWith(color: primary ? tokens.primaryInk : tokens.ink),
           ),
         ),
       ),

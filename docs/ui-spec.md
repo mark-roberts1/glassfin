@@ -8,6 +8,9 @@ Where this document and the old code disagree, the old code is right — but the
 translation target, not a thing to copy structurally. Read this for *what the interface is*, not
 for how Svelte expressed it.
 
+**Two exceptions, both decided during the rebuild and both marked in place:** the focus ring
+(§1.8) and the primary action (§1.11). There the old code is history, not the reference.
+
 ---
 
 ## 0. Global shape and stacking
@@ -134,6 +137,7 @@ renders at 18px. Every `rem` value below is ×16. `em` inside body is ×18.
 | `accent` | `#d5a051` |
 | `accent-text` | `#d5a051` |
 | `danger` | `#e0908c` |
+| `focus-ring` | `#5697de` (Trail) |
 | `ambient-opacity` | `0.28` |
 | `veil-near` / `veil-mid` | `0.35` / `0.78` |
 | `shadow-focus` | `0 18px 44px rgba(0,0,0,0.7)` |
@@ -158,6 +162,7 @@ Light is **not an inversion**: shadows get lighter and shallower, and the artwor
 | `accent` | `#c68331` (Lead, not Accent) |
 | `accent-text` | `#986424` — Lead manages only 2.8:1; this is 4.5:1 |
 | `danger` | `#a6323f` |
+| `focus-ring` | `#3f7cbf` — Trail deepened; Trail itself is 2.75:1 on paper |
 | `ambient-opacity` | `0.16` |
 | `veil-near` / `veil-mid` | `0.62` / `0.90` |
 | `shadow-focus` | `0 14px 32px rgba(14,21,24,0.18)` |
@@ -177,7 +182,14 @@ over-panel      rgba(22,32,38,0.92)      over-ink-dim    rgba(245,243,238,0.64)
 over-artwork    rgba(11,17,20,0.55)      over-ink-faint  #8da0a8
 over-edge       rgba(245,243,238,0.14)   over-accent     #d5a051
                                          over-danger     #e0908c
+over-on-ink     #0b1114 (Night)          over-focus-ring #5697de (Trail)
+over-video-scrim rgba(0,0,0,0.92)        over-track      rgba(255,255,255,0.22)
 ```
+
+`over-on-ink` is what is drawn *on* `over-ink` — the glyph inside a card's watched tick.
+`over-video-scrim` is the dark end of the transport's gradient: pure black rather than Night,
+because it fades into the film itself rather than into any surface of ours. `over-track` is the
+unplayed part of the scrub bar, neutral white so it does not tint against the frame behind it.
 
 Users: the transport, the track menu, the skip prompt, the loading/error overlay, the wash and
 name on a Home library tile, the resume bar and watched tick on a card, the Player stand-in.
@@ -223,12 +235,23 @@ Default:
 ```
 transition: transform 180ms ease, box-shadow 180ms ease
 focused:    transform: scale(1.06)
-            box-shadow: 0 0 0 3px <ink>, <shadow-focus>
+            box-shadow: 0 0 0 3px <focus-ring>, <shadow-focus>
             z-index: 2
 ```
 
 **Scale is the primary signal** — it survives photography off a screen, colour-blindness and bad
-TV calibration. The 3px ring in the page's own ink is support, and inverts with the theme.
+TV calibration. The 3px ring is support.
+
+**The ring is `focus-ring` (Trail), not the page's ink — a second deliberate departure from the
+Qt build**, alongside §1.11. Trail is the one brand colour with no other job in the interface,
+which is exactly what a system signal wants: focus stops competing with content colour and cannot
+be mistaken for part of the artwork it surrounds. Light uses a deepened Trail because `#5697de`
+manages only 2.75:1 on paper, under the 3:1 a non-text indicator needs.
+
+Two notes on drawing it. It is an **outline, not a filled rect behind the child** — a spread
+shadow paints straight through a transparent `.quiet` button and hides its label. And it is drawn
+*outside* the element's bounds, so a container that clips (a scrolling row, a `Wrap` in a narrow
+pane) must reserve `focus-room` or 3px+1 of padding for it.
 
 Per-component overrides:
 
@@ -267,6 +290,33 @@ linear-gradient(to right,  ground/1 0%,    ground/0 45%)
 
 Honoured for: ambient fade, scroll behaviour, transport fade, caret blink.
 **Focus scale is deliberately kept** — it is not decoration.
+
+### 1.11 The primary action — a departure from the Qt build
+
+The rest of this document transcribes what the old interface did. This does not: the primary
+button was **changed on purpose** during the Flutter rebuild, so if the two disagree, this section
+is right and the old CSS is history.
+
+| | |
+| --- | --- |
+| `primary-fill` | `raised` — the same surface as any other button |
+| `primary-ink` | `accent-text` |
+| `primary-border` | `accent-text`, 1px |
+| Weight | 500 |
+
+Derived from the role tokens rather than stored per theme, so the rule and the label cannot drift
+apart from the gold they are made of.
+
+The old app's `.primary { background: var(--ink) }` filled the largest control on the screen with
+the brightest colour in the palette, which in a dark room makes it the brightest *object* in the
+room. The style guide never asked for it — it is an identity guide, and carries no button
+specification at all — so there was nothing to preserve. A gold rule and a gold label carry the
+same "this is what you came here to do" with nothing on screen exceeding the brightness of body
+text. Four treatments (Paper, gold fill, dimmed paper, outlined gold) were trialled on the actual
+panel behind a debug key; outlined gold won and the trial scaffolding was deleted.
+
+`accent-text` rather than `accent` for the rule: in dark they are the same colour already, and in
+light the deeper gold takes the boundary against `raised` from 2.5:1 to 4.5:1.
 
 ---
 
@@ -466,7 +516,8 @@ Badges: video badges are solid inverted chips (`ink` background, `ground` text, 
 `letter-spacing .03em`); audio badges and the subtitle list are "quiet" — transparent with a
 `1px edge` border and `ink-dim` text.
 
-Actions: a primary Play (inverted, weight 500) and, for non-Series with a resume point over 10s,
+Actions: a primary Play (outlined gold, weight 500 — see §1.11) and, for non-Series with a resume
+point over 10s,
 "Start from the beginning" — which zeroes the resume point in a *copy* of the item rather than
 passing a start-position argument. Play on a Series plays the next-up episode, falling back to the
 first. The Play button carries priority 2.
@@ -494,8 +545,8 @@ only place the mark is large enough to show its facets properly.
    trailing letter-space so it optically centres). Polls every 3000ms.
 4. **password** — username and password fields (password shown as bullets), Sign in, and Back.
 
-Buttons are left-aligned text rows in `raised`; `.primary` is inverted and centred; `.quiet` is
-transparent in `ink-dim`. Focus is **ring only, no scale**. Errors in `danger` at `0.9rem` with
+Buttons are left-aligned text rows in `raised`; `.primary` is outlined gold and centred (§1.11);
+`.quiet` is transparent in `ink-dim`. Focus is **ring only, no scale**. Errors in `danger` at `0.9rem` with
 `role="alert"`. Focus is claimed on mount and after every stage transition; the first field or
 action in each stage carries priority 1.
 

@@ -14,7 +14,6 @@ import 'package:flutter/widgets.dart';
 
 import '../design/focus.dart';
 import '../design/metrics.dart';
-import '../design/primary_style.dart';
 import '../design/theme.dart';
 import '../design/tokens.dart';
 
@@ -23,8 +22,9 @@ enum ButtonTone {
   /// Raised, with a hairline edge. The default.
   plain,
 
-  /// Inverted: ink background, ground text, weight 500. One per screen at most —
-  /// it is the thing the viewer came to do.
+  /// A gold rule and a gold label on the raised surface, weight 500. One per
+  /// screen at most — it is the thing the viewer came to do. See
+  /// `GlassfinTokens.primaryFill` for why it is outlined rather than filled.
   primary,
 
   /// Transparent, in dimmed ink. For "Change server", "Cancel", "Back": ways
@@ -63,8 +63,7 @@ class GlassButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    final inverted = tone == ButtonTone.primary;
-    final primary = PrimaryStyle.resolve(tokens);
+    final primary = tone == ButtonTone.primary;
 
     return Focusable(
       group: group,
@@ -82,13 +81,13 @@ class GlassButton extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: Radii.br,
           color: switch (tone) {
-            ButtonTone.primary => primary.fill,
+            ButtonTone.primary => tokens.primaryFill,
             ButtonTone.quiet => null,
             ButtonTone.plain => tokens.raised,
           },
           border: tone == ButtonTone.quiet
               ? null
-              : Border.all(color: inverted ? primary.border : tokens.edge),
+              : Border.all(color: primary ? tokens.primaryBorder : tokens.edge),
         ),
         // **Align, not Container.alignment.** A Container given an alignment
         // expands to fill whatever it is offered, so in a Wrap — Detail's
@@ -104,9 +103,9 @@ class GlassButton extends StatelessWidget {
             label,
             textAlign: centred ? TextAlign.center : TextAlign.start,
             style: (textStyle ?? Type.body).copyWith(
-              fontWeight: inverted ? Type.medium : null,
+              fontWeight: primary ? Type.medium : null,
               color: switch (tone) {
-                ButtonTone.primary => primary.ink,
+                ButtonTone.primary => tokens.primaryInk,
                 ButtonTone.quiet => tokens.inkDim,
                 ButtonTone.plain => tokens.ink,
               },
@@ -159,7 +158,9 @@ class Pill extends StatelessWidget {
       priority: priority,
       enabled: onSelect != null,
       child: (context, focused) {
-        final ink = focused ? tokens.ground : (selected ? tokens.accentText : tokens.ink);
+        final ink = focused
+            ? tokens.ground
+            : (selected ? tokens.accentText : tokens.ink);
         return Container(
           padding: EdgeInsets.fromLTRB(
             leading == null ? Metrics.rem(1.3) : Metrics.rem(0.95),

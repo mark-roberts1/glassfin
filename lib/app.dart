@@ -21,7 +21,6 @@ import 'components/keyboard.dart';
 import 'components/transport.dart';
 import 'debug_capture.dart';
 import 'design/metrics.dart';
-import 'design/primary_style.dart';
 import 'design/theme.dart';
 import 'design/tokens.dart';
 import 'input/keyboard.dart';
@@ -94,7 +93,8 @@ class _GlassfinAppState extends State<GlassfinApp> with WidgetsBindingObserver {
 
   /// Whichever field keys should go into: Search's inline one when that screen
   /// is up, the modal sheet's otherwise.
-  TextEntrySession? get _activeEntry => _isSearch ? _searchSession : _modalEntry;
+  TextEntrySession? get _activeEntry =>
+      _isSearch ? _searchSession : _modalEntry;
 
   @override
   void initState() {
@@ -253,7 +253,8 @@ class _GlassfinAppState extends State<GlassfinApp> with WidgetsBindingObserver {
   // Navigation
   // ---------------------------------------------------------------------------
 
-  void _push(GlassfinRoute route) => setState(() => _routes = _routes.push(route));
+  void _push(GlassfinRoute route) =>
+      setState(() => _routes = _routes.push(route));
 
   /// **Episodes play; films and series open their detail screen.**
   ///
@@ -375,23 +376,7 @@ class _GlassfinAppState extends State<GlassfinApp> with WidgetsBindingObserver {
                 // reads pointer mode to decide whether to show a cursor at all.
                 valueListenable: PointerMode.instance.active,
                 builder: (context, _, _) =>
-                    ValueListenableBuilder<PrimaryTreatment>(
-                      valueListenable: PrimaryStyle.current,
-                      builder: (context, treatment, _) => Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          ColoredBox(
-                            color: tokens.ground,
-                            child: _body(tokens),
-                          ),
-                          // Names the treatment in the corner, so an F12
-                          // capture says which one it is rather than needing to
-                          // be remembered.
-                          if (kDebugMode)
-                            _TreatmentBadge(treatment: treatment),
-                        ],
-                      ),
-                    ),
+                    ColoredBox(color: tokens.ground, child: _body(tokens)),
               ),
             ),
           ),
@@ -424,10 +409,7 @@ class _GlassfinAppState extends State<GlassfinApp> with WidgetsBindingObserver {
               onEditText: _openTextEntry,
             ),
             if (_modalEntry != null)
-              _KeyboardSheet(
-                session: _modalEntry!,
-                onDone: _commitTextEntry,
-              ),
+              _KeyboardSheet(session: _modalEntry!, onDone: _commitTextEntry),
           ],
         ),
       );
@@ -632,13 +614,6 @@ class _InputHost extends StatelessWidget {
           return KeyEventResult.handled;
         }
 
-        // Cycles the primary-action treatment being trialled. Temporary — see
-        // lib/design/primary_style.dart.
-        if (kDebugMode && event.logicalKey == LogicalKeyboardKey.f9) {
-          PrimaryStyle.cycle();
-          return KeyEventResult.handled;
-        }
-
         // Text entry gets first refusal, exactly as the old `route()` did — but
         // for the opposite reason. There, the shell ate every key and typing had
         // to be reconstructed from actions. Here Flutter delivers real
@@ -716,38 +691,6 @@ class _KeyboardSheet extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-/// Names the primary-action treatment currently being trialled. Debug only, and
-/// goes away with `lib/design/primary_style.dart` once one is chosen.
-class _TreatmentBadge extends StatelessWidget {
-  const _TreatmentBadge({required this.treatment});
-
-  final PrimaryTreatment treatment;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-
-    return Positioned(
-      top: 8,
-      right: 8,
-      child: IgnorePointer(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: tokens.raised,
-            border: Border.all(color: tokens.edge),
-            borderRadius: Radii.pill,
-          ),
-          child: Text(
-            'F9  ${treatment.label}',
-            style: Type.rem(0.74).copyWith(color: tokens.inkFaint),
-          ),
-        ),
-      ),
     );
   }
 }
