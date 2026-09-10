@@ -13,6 +13,7 @@ import 'dart:math';
 import 'package:path_provider/path_provider.dart';
 
 import '../settings/preferences.dart';
+import '../settings/subtitle_appearance.dart';
 import 'models.dart';
 
 class SessionStore {
@@ -77,6 +78,27 @@ class SessionStore {
     final file = await _file('preferences.json');
     await file.parent.create(recursive: true);
     await file.writeAsString(jsonEncode(preferences.toJson()));
+  }
+
+  /// Subtitle appearance is stored beside the preferences rather than inside
+  /// them, because it is a different kind of setting: these are mpv's, and the
+  /// spec promises they "apply to every video, and survive a restart".
+  Future<SubtitleAppearance> readSubtitleAppearance() async {
+    final file = await _file('subtitles.json');
+    if (!file.existsSync()) return const SubtitleAppearance();
+    try {
+      return SubtitleAppearance.fromJson(
+        jsonDecode(await file.readAsString()) as Map<String, Object?>,
+      );
+    } catch (_) {
+      return const SubtitleAppearance();
+    }
+  }
+
+  Future<void> writeSubtitleAppearance(SubtitleAppearance appearance) async {
+    final file = await _file('subtitles.json');
+    await file.parent.create(recursive: true);
+    await file.writeAsString(jsonEncode(appearance.toJson()));
   }
 
   /// A stable identifier for this installation.

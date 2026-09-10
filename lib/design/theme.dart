@@ -28,33 +28,59 @@ abstract final class Type {
   /// Heading tracking, `-0.02em`.
   static const headingEm = -0.02;
 
-  static TextStyle _base(double size, FontWeight weight, double em) =>
-      TextStyle(
-        fontFamily: family,
-        fontFamilyFallback: fallback,
-        fontSize: size,
-        fontWeight: weight,
-        height: 1.45,
-        letterSpacing: tracking(em, size),
-      );
+  static TextStyle _base(
+    double size,
+    FontWeight weight,
+    double em,
+    double height,
+  ) => TextStyle(
+    fontFamily: family,
+    fontFamilyFallback: fallback,
+    fontSize: size,
+    fontWeight: weight,
+    height: height,
+    letterSpacing: tracking(em, size),
+  );
+
+  /// A style at a size given in the spec's own `rem` figures.
+  ///
+  /// `docs/ui-spec.md` quotes nearly every size as a `rem` value, and the root
+  /// font size is never set — so `1rem` is 16px even though body text renders at
+  /// 18px. This exists so those figures can be transcribed literally instead of
+  /// pre-multiplied into magic numbers nobody can trace back to the spec.
+  static TextStyle rem(
+    double rems, {
+    FontWeight weight = regular,
+    double em = bodyEm,
+    double height = 1.45,
+  }) => _base(rems * 16, weight, em, height);
+
+  /// A style at an explicit pixel size, for the handful of places the spec gives
+  /// one — body text, the logo wordmark, a viewport-derived title.
+  static TextStyle px(
+    double size, {
+    FontWeight weight = regular,
+    double em = bodyEm,
+    double height = 1.45,
+  }) => _base(size, weight, em, height);
 
   /// 18px — the body size the whole interface is calibrated against.
-  static TextStyle get body => _base(18, regular, bodyEm);
+  static TextStyle get body => px(18);
 
   /// 18px at weight 500, for a row's own name against its dimmed value.
-  static TextStyle get bodyMedium => _base(18, medium, bodyEm);
+  static TextStyle get bodyMedium => px(18, weight: medium);
 
   /// `1.05rem` — shelf headings, library tile names, settings section titles.
-  static TextStyle get heading => _base(16.8, medium, headingEm);
+  static TextStyle get heading => rem(1.05, weight: medium, em: headingEm);
 
   /// `0.95rem` — pills and other chrome.
-  static TextStyle get label => _base(15.2, medium, bodyEm);
+  static TextStyle get label => rem(0.95, weight: medium);
 
   /// A screen title.
-  static TextStyle get title => _base(34, medium, headingEm);
+  static TextStyle get title => px(34, weight: medium, em: headingEm);
 
   /// A detail screen's film or series name.
-  static TextStyle get display => _base(56, medium, headingEm);
+  static TextStyle get display => px(56, weight: medium, em: headingEm);
 }
 
 /// Provides [GlassfinTokens] to the widget tree.

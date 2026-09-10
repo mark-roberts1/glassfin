@@ -128,10 +128,36 @@ class GlassfinTokens {
 
   static const overEdge = Color(0x24F5F3EE); // rgba(245,243,238,0.14)
   static const overInk = Color(0xFFF5F3EE);
+
+  /// Content drawn *on* [overInk] — the glyph inside a card's watched tick.
+  /// Brand Night, and fixed like everything else in this family.
+  static const overOnInk = _Brand.night;
+
   static const overInkDim = Color(0xA3F5F3EE); // rgba(245,243,238,0.64)
   static const overInkFaint = Color(0xFF8DA0A8);
   static const overAccent = Color(0xFFD5A051);
   static const overDanger = Color(0xFFE0908C);
+
+  /// The dark end of the transport's gradient — `rgba(0,0,0,0.92)`. Pure black
+  /// rather than Night, because it fades into the film itself rather than into
+  /// any surface of ours.
+  static const overVideoScrim = Color(0xEB000000);
+
+  /// The unplayed part of the scrub bar — `rgba(255,255,255,0.22)`. Neutral
+  /// white, so it does not tint against whatever the frame behind it is doing.
+  static const overTrack = Color(0x38FFFFFF);
+
+  /// The wash that carries a Home library tile's name. Fixed dark in both
+  /// themes, like everything else that sits on artwork.
+  static const overTileVeil = LinearGradient(
+    begin: Alignment.bottomCenter,
+    end: Alignment.topCenter,
+    colors: [
+      Color(0xD90B1114), // rgba(11,17,20,0.85)
+      Color(0x260B1114), // rgba(11,17,20,0.15)
+    ],
+    stops: [0.12, 0.7],
+  );
 
   // ---------------------------------------------------------------------------
   // The two themes.
@@ -270,4 +296,15 @@ abstract final class Radii {
 
   static const br = BorderRadius.all(small);
   static const brLarge = BorderRadius.all(large);
+
+  /// Fully rounded: Home's chrome pills, the Back button, season pills. A number
+  /// far larger than any element it is applied to, which is how CSS's `999px`
+  /// idiom works.
+  static const pill = BorderRadius.all(Radius.circular(999));
+
+  /// The rating chip on Detail's meta line and the badges in the track menu.
+  static const chip = BorderRadius.all(Radius.circular(4));
+
+  /// Detail's media badges, a hair softer than a chip.
+  static const badge = BorderRadius.all(Radius.circular(5));
 }

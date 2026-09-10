@@ -62,31 +62,80 @@ class SubtitleAppearance {
   /// mpv's `sub-ass-override`. Empty leaves it alone.
   final String? assStyleOverride;
 
+  /// **The nullable fields are passed as closures, not as values.**
+  ///
+  /// Every one of these settings has "Default" as a real, selectable option that
+  /// means *null* — leave mpv's own value alone. An ordinary
+  /// `int? size` parameter cannot express that: `size ?? this.size` reads a null
+  /// as "not specified" and quietly keeps the old value, so cycling a row round
+  /// to Default would do nothing. Passing `size: () => null` says it plainly,
+  /// and omitting the argument still means "leave this field as it is".
   SubtitleAppearance copyWith({
-    int? size,
-    String? font,
-    String? color,
-    String? borderColor,
-    int? borderSize,
-    String? backgroundColor,
-    String? backgroundTransparency,
+    ValueGetter<int?>? size,
+    ValueGetter<String?>? font,
+    ValueGetter<String?>? color,
+    ValueGetter<String?>? borderColor,
+    ValueGetter<int?>? borderSize,
+    ValueGetter<String?>? backgroundColor,
+    ValueGetter<String?>? backgroundTransparency,
     SubtitleAlignX? alignX,
     SubtitleAlignY? alignY,
     bool? assScaleBorderAndShadow,
-    String? assStyleOverride,
+    ValueGetter<String?>? assStyleOverride,
   }) => SubtitleAppearance(
-    size: size ?? this.size,
-    font: font ?? this.font,
-    color: color ?? this.color,
-    borderColor: borderColor ?? this.borderColor,
-    borderSize: borderSize ?? this.borderSize,
-    backgroundColor: backgroundColor ?? this.backgroundColor,
-    backgroundTransparency:
-        backgroundTransparency ?? this.backgroundTransparency,
+    size: size == null ? this.size : size(),
+    font: font == null ? this.font : font(),
+    color: color == null ? this.color : color(),
+    borderColor: borderColor == null ? this.borderColor : borderColor(),
+    borderSize: borderSize == null ? this.borderSize : borderSize(),
+    backgroundColor: backgroundColor == null
+        ? this.backgroundColor
+        : backgroundColor(),
+    backgroundTransparency: backgroundTransparency == null
+        ? this.backgroundTransparency
+        : backgroundTransparency(),
     alignX: alignX ?? this.alignX,
     alignY: alignY ?? this.alignY,
     assScaleBorderAndShadow:
         assScaleBorderAndShadow ?? this.assScaleBorderAndShadow,
-    assStyleOverride: assStyleOverride ?? this.assStyleOverride,
+    assStyleOverride: assStyleOverride == null
+        ? this.assStyleOverride
+        : assStyleOverride(),
   );
+
+  factory SubtitleAppearance.fromJson(Map<String, Object?> json) =>
+      SubtitleAppearance(
+        size: json['size'] as int?,
+        font: json['font'] as String?,
+        color: json['color'] as String?,
+        borderColor: json['borderColor'] as String?,
+        borderSize: json['borderSize'] as int?,
+        backgroundColor: json['backgroundColor'] as String?,
+        backgroundTransparency: json['backgroundTransparency'] as String?,
+        alignX: SubtitleAlignX.values.byName(
+          json['alignX'] as String? ?? SubtitleAlignX.center.name,
+        ),
+        alignY: SubtitleAlignY.values.byName(
+          json['alignY'] as String? ?? SubtitleAlignY.bottom.name,
+        ),
+        assScaleBorderAndShadow:
+            json['assScaleBorderAndShadow'] as bool? ?? true,
+        assStyleOverride: json['assStyleOverride'] as String?,
+      );
+
+  /// Nulls are written out rather than omitted, so that "Default" survives a
+  /// restart as the deliberate choice it is.
+  Map<String, Object?> toJson() => {
+    'size': size,
+    'font': font,
+    'color': color,
+    'borderColor': borderColor,
+    'borderSize': borderSize,
+    'backgroundColor': backgroundColor,
+    'backgroundTransparency': backgroundTransparency,
+    'alignX': alignX.name,
+    'alignY': alignY.name,
+    'assScaleBorderAndShadow': assScaleBorderAndShadow,
+    'assStyleOverride': assStyleOverride,
+  };
 }

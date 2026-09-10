@@ -84,6 +84,8 @@ lib/
   settings/            preferences, persistence
   components/          Card, Row, ScreenHeader, Logo, Keyboard, Player, PlaybackMenu
   screens/             Home, Search, Library, Detail, Settings, Login
+  nav/routes.dart      the route stack
+  format.dart          clock and runtime strings
 assets/
   inputmaps/           copied verbatim from the Qt build — same format, do not rewrite
   fonts/               Space Grotesk 400 and 500, static instances, OFL
@@ -102,7 +104,14 @@ In rough order of how much damage breaking them does.
    traversal policy is a dead end, and dead ends are the specific failure the couch bar exists to
    prevent.
 3. **Nothing outside `lib/design/` names a colour or a size.** Same discipline the CSS custom
-   properties enforced. A raw `Color(0xFF…)` or a magic `24.0` in a screen is a bug.
+   properties enforced. A raw `Color(0xFF…)` or a magic `24.0` in a screen is a bug. Sizes quoted
+   in the spec as `rem` are written as `Metrics.rem(2.6)` and `Type.rem(0.92)` so they can be read
+   straight back against `docs/ui-spec.md` rather than pre-multiplied into constants nobody can
+   trace.
+
+Three components carry a `Media`/`Detail` prefix — `MediaCard`, `MediaRow`, `DetailHero` — because
+Flutter already owns `Card`, `Row` and `Hero`. The spec calls them Card, Row and the hero; a file
+importing both names would silently get the wrong widget.
 
 ## Spatial navigation: three behaviours that are deliberate
 

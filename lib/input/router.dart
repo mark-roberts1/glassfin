@@ -23,15 +23,26 @@ class InputRouter {
   const InputRouter({
     required this.playback,
     required this.onNavigate,
+    this.menuOpen = false,
+    this.onOpenMenu,
+    this.onCloseMenu,
     this.onSearch,
     this.onHome,
     this.onBack,
   });
 
-  final PlaybackController playback;
+  /// Null before sign-in, where there is no player yet but the keyboard still
+  /// has to reach navigation.
+  final PlaybackController? playback;
 
   /// Directional movement and select, once the playback branch has declined.
   final NavigationHandler onNavigate;
+
+  /// Whether the track menu is showing. While it is, Back closes it rather than
+  /// stopping the film, and directions move **inside** it.
+  final bool menuOpen;
+  final VoidCallback? onOpenMenu;
+  final VoidCallback? onCloseMenu;
 
   final VoidCallback? onSearch;
   final VoidCallback? onHome;
@@ -41,24 +52,45 @@ class InputRouter {
 
   /// Returns true if the action was consumed.
   bool handle(InputAction action) {
-    if (playback.isPlaying) {
+    final player = playback;
+    if (player != null && player.isPlaying) {
       // Any button at all revives the transport: the overlay is how the viewer
       // knows the application is alive.
-      playback.nudgeChrome();
-      return _duringPlayback(action);
+      player.nudgeChrome();
+      return _duringPlayback(player, action);
     }
     return _duringNavigation(action);
   }
 
-  /// Priority here is deliberate, and the order is the behaviour.
+  /// Priority here is deliberate, and **the order is the behaviour**:
+  /// menu → skip offer → open-menu → track cycling → transport.
   ///
-  /// `select` means "take the skip" when one is offered and "pause" otherwise,
-  /// because a skip prompt is on screen and pressing the obvious button should
-  /// do the obvious thing.
-  bool _duringPlayback(InputAction action) {
+  /// So `select` means "take the skip" when one is offered and "pause"
+  /// otherwise, because a skip prompt is on screen and pressing the obvious
+  /// button should do the obvious thing.
+  bool _duringPlayback(PlaybackController playback, InputAction action) {
+    // The menu is modal over the film: while it is up, the only thing that
+    // reaches the transport is the button that closes it.
+    if (menuOpen) {
+      if (action == InputAction.back ||
+          action == InputAction.exit ||
+          action == InputAction.menu) {
+        onCloseMenu?.call();
+        return true;
+      }
+      return onNavigate(action);
+    }
+
     if (playback.skip != null &&
         (action == InputAction.select || action == InputAction.playPause)) {
       playback.takeSkip();
+      return true;
+    }
+
+    // Up is the gesture: there is nothing above the transport to navigate to
+    // during playback, so the direction is free to mean "show me the tracks".
+    if (action == InputAction.up || action == InputAction.menu) {
+      onOpenMenu?.call();
       return true;
     }
 

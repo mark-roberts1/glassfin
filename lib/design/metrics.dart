@@ -16,6 +16,11 @@ class Metrics {
     required this.posterWidth,
     required this.stillWidth,
     required this.focusRoom,
+    required this.heroHeight,
+    required this.menuMaxHeight,
+    required this.detailPosterWidth,
+    required this.panelWidth,
+    required this.detailTitleSize,
   });
 
   factory Metrics.of(BuildContext context) {
@@ -29,6 +34,11 @@ class Metrics {
       // Half the extra *height* a focused 2:3 poster gains at scale 1.06,
       // plus 8px of air. See the focusRoom contract below.
       focusRoom: posterWidth * 0.045 + 8,
+      heroHeight: size.height * 0.62,
+      menuMaxHeight: size.height * 0.58,
+      detailPosterWidth: size.width * 0.17 > 260 ? 260 : size.width * 0.17,
+      panelWidth: size.width * 0.74 > 520 ? 520 : size.width * 0.74,
+      detailTitleSize: (size.width * 0.034).clamp(rem(2), rem(3.2)),
     );
   }
 
@@ -68,6 +78,25 @@ class Metrics {
   /// a library is a place rather than a title.
   double get libraryTileWidth => posterWidth * 1.6;
   double get libraryTileHeight => libraryTileWidth * 9 / 16;
+
+  /// Detail's backdrop — `62vh`. Sharp and full strength, as opposed to the
+  /// blurred ambient wash every other screen uses; they are not the same thing.
+  final double heroHeight;
+
+  /// The track menu is capped at `58vh` so it never reaches the transport.
+  final double menuMaxHeight;
+
+  /// Detail's poster — `17vw`, capped at 260px. The cap is what stops it
+  /// dominating the masthead on a very wide panel.
+  final double detailPosterWidth;
+
+  /// The sign-in panel — `min(520px, 74vw)`.
+  final double panelWidth;
+
+  /// Detail's title — `clamp(2rem, 3.4vw, 3.2rem)`. The one place a *font* size
+  /// is viewport-derived, because a film's name is the largest thing on screen
+  /// and should grow with the panel.
+  final double detailTitleSize;
 
   /// The CSS never set a root font size, so `1rem` is 16px even though body
   /// text renders at 18px. Every `rem` figure in the spec is ×16, and this
