@@ -28,9 +28,24 @@ enum FocusVisual {
   /// text, and scaling text resamples it into a blur.
   ringOnly,
 
-  /// The playback menu's track rows: ring only, drawn in `overInk` rather than
-  /// the page's ink, because the menu floats over the film.
-  ringOnlyOverVideo,
+  /// The transport's icon controls: **scale alone, and no ring.**
+  ///
+  /// Over the film the ring is wrong twice over. A rectangle around a glyph is
+  /// a page idiom, and drawn on a photograph it reads as a box that has always
+  /// been there rather than as a highlight. Scale is what this document already
+  /// calls the primary signal, and it is the one the reference client uses —
+  /// its controls grow under the pointer and light a circle behind themselves,
+  /// which is what [GlassfinTokens.overHighlight] is for. The component paints
+  /// that circle from the `focused` flag; the focus layer supplies the growth.
+  overVideoControl,
+
+  /// The scrub bar, the track and settings menu rows, the skip prompt:
+  /// **no ring and no scale.**
+  ///
+  /// The same reasoning, minus the growth: these are full-width, and a row that
+  /// grows pushes its neighbours around. They light their own surface instead —
+  /// again from the `focused` flag.
+  overVideoSurface,
 }
 
 /// Anything the viewer can reach.
@@ -160,12 +175,15 @@ class _FocusableState extends State<Focusable> {
     final scale = switch (widget.visual) {
       FocusVisual.artwork || FocusVisual.inverted => 1.06,
       FocusVisual.key => 1.1,
-      FocusVisual.ringOnly || FocusVisual.ringOnlyOverVideo => 1.0,
+      FocusVisual.overVideoControl => 1.1,
+      FocusVisual.ringOnly || FocusVisual.overVideoSurface => 1.0,
     };
 
-    final ringColour = widget.visual == FocusVisual.ringOnlyOverVideo
-        ? GlassfinTokens.overFocusRing
-        : tokens.focusRing;
+    // Anything over the film draws its own focused surface; see
+    // [FocusVisual.overVideoControl].
+    final ringed =
+        widget.visual != FocusVisual.overVideoControl &&
+        widget.visual != FocusVisual.overVideoSurface;
 
     // Depth only. **The ring is not a shadow** — see [_Ring].
     final shadows = <BoxShadow>[
@@ -173,7 +191,9 @@ class _FocusableState extends State<Focusable> {
         ...switch (widget.visual) {
           FocusVisual.artwork || FocusVisual.inverted => tokens.shadowFocus,
           FocusVisual.key => tokens.shadowLift,
-          FocusVisual.ringOnly || FocusVisual.ringOnlyOverVideo => const [],
+          FocusVisual.ringOnly ||
+          FocusVisual.overVideoControl ||
+          FocusVisual.overVideoSurface => const [],
         },
     ];
 
@@ -188,24 +208,26 @@ class _FocusableState extends State<Focusable> {
       child: widget.child(context, on),
     );
 
-    content = Stack(
-      // The ring is drawn outside the box, so the stack must not clip it.
-      clipBehavior: Clip.none,
-      children: [
-        content,
-        Positioned(
-          left: -ringWidth,
-          top: -ringWidth,
-          right: -ringWidth,
-          bottom: -ringWidth,
-          child: _Ring(
-            on: on,
-            colour: ringColour,
-            radius: _grown(widget.borderRadius, ringWidth),
+    if (ringed) {
+      content = Stack(
+        // The ring is drawn outside the box, so the stack must not clip it.
+        clipBehavior: Clip.none,
+        children: [
+          content,
+          Positioned(
+            left: -ringWidth,
+            top: -ringWidth,
+            right: -ringWidth,
+            bottom: -ringWidth,
+            child: _Ring(
+              on: on,
+              colour: tokens.focusRing,
+              radius: _grown(widget.borderRadius, ringWidth),
+            ),
           ),
-        ),
-      ],
-    );
+        ],
+      );
+    }
 
     if (scale != 1.0) {
       content = AnimatedScale(

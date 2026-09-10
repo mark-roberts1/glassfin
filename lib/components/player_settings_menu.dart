@@ -78,9 +78,8 @@ class _PlayerSettingsMenuState extends State<PlayerSettingsMenu> {
             ),
             child: SingleChildScrollView(
               child: DecoratedBox(
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: GlassfinTokens.overPanel,
-                  border: Border.all(color: GlassfinTokens.overEdge),
                   borderRadius: Radii.br,
                 ),
                 child: Column(
@@ -147,11 +146,7 @@ class _PlayerSettingsMenuState extends State<PlayerSettingsMenu> {
 }
 
 class _Row extends StatelessWidget {
-  const _Row({
-    required this.name,
-    required this.value,
-    required this.onSelect,
-  });
+  const _Row({required this.name, required this.value, required this.onSelect});
 
   final String name;
   final String value;
@@ -160,18 +155,18 @@ class _Row extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Focusable(
     group: playerSettingsGroup,
-    visual: FocusVisual.ringOnlyOverVideo,
+    visual: FocusVisual.overVideoSurface,
     onSelect: onSelect,
-    child: (context, focused) => Container(
+    child: (context, focused) => AnimatedContainer(
+      duration: Motion.fast,
+      curve: Motion.ease,
       padding: EdgeInsets.symmetric(
         horizontal: Metrics.rem(1.1),
         vertical: Metrics.rem(0.8),
       ),
       // The reference lights the row under the cursor; here it is the focused
       // row, which is the same idea reached by a different input.
-      color: focused
-          ? GlassfinTokens.overInk.withValues(alpha: 0.10)
-          : const Color(0x00000000),
+      color: focused ? GlassfinTokens.overHighlight : const Color(0x00000000),
       child: Row(
         children: [
           Expanded(
@@ -258,9 +253,7 @@ class _PlaybackInfo extends StatelessWidget {
           width: Metrics.rem(6),
           child: Text(
             name,
-            style: Type.rem(
-              0.85,
-            ).copyWith(color: GlassfinTokens.overInkFaint),
+            style: Type.rem(0.85).copyWith(color: GlassfinTokens.overInkFaint),
           ),
         ),
         Expanded(

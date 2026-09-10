@@ -176,12 +176,18 @@ class GlassfinTokens {
   /// everything else in this family.
   static const overOnInk = _Brand.night;
 
-  /// The focus ring over video. Trail again, so focus means the same thing on a
-  /// film as it does on a page.
+  /// The focused surface of anything drawn over the film: the circle behind a
+  /// transport control, the lit row in a track menu.
   ///
-  /// Worth watching on real content: a saturated blue ring has less to
-  /// distinguish it against a blue-heavy scene than Paper would.
-  static const overFocusRing = _Brand.trail;
+  /// **Nothing over the film takes a focus ring.** A rectangle drawn around
+  /// every control is what a page does, and the transport is not a page — it is
+  /// a row of glyphs on a photograph. Focus there is carried by scale and by
+  /// this wash, which is the reference client's own answer.
+  ///
+  /// Translucent Paper, and safe at this alpha because the transport lays a
+  /// near-black gradient over the picture before any of it is drawn — the
+  /// backdrop is dark whatever the film is doing.
+  static const overHighlight = Color(0x2EF5F3EE); // rgba(245,243,238,0.18)
 
   static const overInkDim = Color(0xA3F5F3EE); // rgba(245,243,238,0.64)
   static const overInkFaint = Color(0xFF8DA0A8);

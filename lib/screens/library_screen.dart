@@ -156,7 +156,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
           ),
           if (_hasMore)
             Padding(
-              padding: EdgeInsets.fromLTRB(0, Metrics.rem(1.5), 0, Metrics.rem(2.5)),
+              padding: EdgeInsets.fromLTRB(
+                0,
+                Metrics.rem(1.5),
+                0,
+                Metrics.rem(2.5),
+              ),
               child: Center(
                 child: GlassButton(
                   label: _loadingMore

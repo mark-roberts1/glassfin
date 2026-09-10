@@ -170,11 +170,7 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               const Logo(size: 34, wordmark: true),
               const Spacer(),
-              Pill(
-                label: 'Search',
-                group: 'chrome',
-                onSelect: widget.onSearch,
-              ),
+              Pill(label: 'Search', group: 'chrome', onSelect: widget.onSearch),
               SizedBox(width: Metrics.rem(0.6)),
               Pill(
                 label: 'Settings',
@@ -194,11 +190,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
           // The way into everything, rather than only what is recent or
           // unfinished.
-          if (_libraries.isNotEmpty) _Libraries(
-            libraries: _libraries,
-            client: widget.client,
-            onSelect: widget.onLibrary,
-          ),
+          if (_libraries.isNotEmpty)
+            _Libraries(
+              libraries: _libraries,
+              client: widget.client,
+              onSelect: widget.onLibrary,
+            ),
 
           for (final shelf in _latestShelves) _row(shelf),
 

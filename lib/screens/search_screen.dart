@@ -139,9 +139,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   child: Container(
                     padding: EdgeInsets.only(right: Metrics.rem(3.5)),
                     decoration: BoxDecoration(
-                      border: Border(
-                        right: BorderSide(color: tokens.edge),
-                      ),
+                      border: Border(right: BorderSide(color: tokens.edge)),
                     ),
                     child: SingleChildScrollView(
                       child: OnScreenKeyboard(
@@ -154,14 +152,16 @@ class _SearchScreenState extends State<SearchScreen> {
                   ),
                 ),
                 SizedBox(width: Metrics.rem(3.5)),
-                Expanded(child: _Results(
-                  results: _results,
-                  searching: _searching,
-                  term: _term,
-                  client: widget.client,
-                  onOpen: widget.onOpen,
-                  onAmbient: widget.onAmbient,
-                )),
+                Expanded(
+                  child: _Results(
+                    results: _results,
+                    searching: _searching,
+                    term: _term,
+                    client: widget.client,
+                    onOpen: widget.onOpen,
+                    onAmbient: widget.onAmbient,
+                  ),
+                ),
               ],
             ),
           ),

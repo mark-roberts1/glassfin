@@ -351,10 +351,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Widget _lede(String text) => Padding(
     padding: EdgeInsets.only(bottom: Metrics.rem(0.75)),
-    child: Text(
-      text,
-      style: Type.body.copyWith(color: context.tokens.inkDim),
-    ),
+    child: Text(text, style: Type.body.copyWith(color: context.tokens.inkDim)),
   );
 
   Widget _gap() => SizedBox(height: Metrics.rem(0.75));
@@ -397,10 +394,7 @@ class _Field extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                label,
-                style: Type.rem(0.8).copyWith(color: tokens.inkDim),
-              ),
+              Text(label, style: Type.rem(0.8).copyWith(color: tokens.inkDim)),
               SizedBox(height: Metrics.rem(0.2)),
               Text(
                 shown,

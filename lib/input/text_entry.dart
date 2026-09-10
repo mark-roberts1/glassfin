@@ -58,14 +58,13 @@ class TextEntrySession {
     final selection = value.selection.isValid
         ? value.selection
         : TextSelection.collapsed(offset: value.text.length);
-    final replaced = selection.textBefore(value.text) +
+    final replaced =
+        selection.textBefore(value.text) +
         text +
         selection.textAfter(value.text);
     controller.value = TextEditingValue(
       text: replaced,
-      selection: TextSelection.collapsed(
-        offset: selection.start + text.length,
-      ),
+      selection: TextSelection.collapsed(offset: selection.start + text.length),
     );
   }
 
@@ -88,7 +87,8 @@ class TextEntrySession {
 
     final before = selection.textBefore(value.text);
     controller.value = TextEditingValue(
-      text: before.substring(0, before.length - 1) +
+      text:
+          before.substring(0, before.length - 1) +
           selection.textAfter(value.text),
       selection: TextSelection.collapsed(offset: selection.start - 1),
     );

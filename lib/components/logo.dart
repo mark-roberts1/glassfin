@@ -230,7 +230,9 @@ final Path _silhouette = parseSvgPath(
 /// Commands and numbers. Separators — spaces and commas — fall between the
 /// matches and are ignored, and a command letter may abut its first number, both
 /// of which are ordinary in SVG that has been through a design tool.
-final RegExp _pathToken = RegExp(r'[A-Za-z]|-?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?');
+final RegExp _pathToken = RegExp(
+  r'[A-Za-z]|-?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?',
+);
 
 /// A deliberately small SVG path parser: absolute `M`, `L`, `Q` and `Z` only.
 ///

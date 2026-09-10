@@ -61,8 +61,7 @@ class RouteStack {
 
   bool get canPop => entries.length > 1;
 
-  RouteStack push(GlassfinRoute route) =>
-      RouteStack([...entries, route]);
+  RouteStack push(GlassfinRoute route) => RouteStack([...entries, route]);
 
   /// **Refuses to empty the stack.** There is always somewhere to be, and a
   /// blank screen from three metres is indistinguishable from a crash.

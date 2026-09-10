@@ -27,8 +27,7 @@ Future<void> captureWindow() async {
   if (!kDebugMode) return;
   try {
     final boundary =
-        captureKey.currentContext?.findRenderObject()
-            as RenderRepaintBoundary?;
+        captureKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
     if (boundary == null) {
       debugPrint('glassfin: capture found no boundary');
       return;

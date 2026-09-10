@@ -8,8 +8,9 @@ Where this document and the old code disagree, the old code is right — but the
 translation target, not a thing to copy structurally. Read this for *what the interface is*, not
 for how Svelte expressed it.
 
-**Two exceptions, both decided during the rebuild and both marked in place:** the focus ring
-(§1.8) and the primary action (§1.11). There the old code is history, not the reference.
+**Three exceptions, all decided during the rebuild and all marked in place:** the focus ring
+(§1.8), focus over video (§1.8a) and the primary action (§1.11). There the old code is history,
+not the reference.
 
 ---
 
@@ -262,7 +263,30 @@ Per-component overrides:
 | ScreenHeader Back | inverts to ink background, keeps the scale |
 | Settings rows, Library button, Detail buttons, Login buttons | **ring only, no scale** (scale blurs text at that size) |
 | Keyboard keys | `scale(1.1)` + ring + `shadow-lift` — keys are small, so they scale *more* |
-| PlaybackMenu track rows | ring only, in **`over-ink`** rather than theme ink |
+| Transport icon controls | **`scale(1.1)` + an `over-highlight` circle, no ring** (§1.8a) |
+| Scrub bar | **no ring, no scale** — the bar thickens 5→8px and its head grows 14→18px |
+| PlaybackMenu / settings rows, skip prompt | **no ring, no scale** — the row fills with `over-highlight` |
+
+#### 1.8a Nothing over the film takes a ring — a third departure
+
+`over-highlight` is `rgba(245,243,238,0.18)`.
+
+A rectangle drawn around a glyph is a page idiom. On a photograph it stops reading as a highlight
+and starts reading as a box that was always there — and with a control row of eight of them, the
+transport looked ruled rather than focused. The reference client draws no rings at all: its
+controls grow under the pointer and light a circle behind themselves.
+
+So over the film, **scale carries focus** — which §1.8 already calls the primary signal — with the
+wash as support. It is safe at 0.18 alpha only because the transport lays a near-black gradient
+over the picture first, so the backdrop is dark whatever the film is doing. **Do not reuse
+`over-highlight` on anything drawn straight onto artwork**, where there is no such guarantee.
+
+Two shapes cannot scale: the scrub bar and the menu rows are full-width, and growing them shoves
+their neighbours around. They thicken and light their own surface instead.
+
+The panel hairlines went with the rings, for the same reason — every track row carrying a 1px
+border turned the menu into a stack of boxes. The `over-panel` fill gives the same shape with none
+of the ruling. The `over-edge` chips on the track menu's badges are still there.
 
 ### 1.9 The ambient backdrop
 

@@ -35,10 +35,7 @@ String episodeCode(Item item) {
 String itemCaption(Item item) {
   if (item.type == ItemKind.episode) {
     final code = episodeCode(item);
-    return [
-      if (code.isNotEmpty) code,
-      item.name,
-    ].join(' · ');
+    return [if (code.isNotEmpty) code, item.name].join(' · ');
   }
 
   final year = item.productionYear;

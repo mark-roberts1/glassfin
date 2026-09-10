@@ -259,13 +259,15 @@ class _Masthead extends StatelessWidget {
             _Poster(url: poster, width: metrics.detailPosterWidth),
             SizedBox(width: Metrics.rem(2.4)),
           ],
-          Expanded(child: _Facts(
-            item: item,
-            playLabel: playLabel,
-            canResume: canResume,
-            onPlay: onPlay,
-            onRestart: onRestart,
-          )),
+          Expanded(
+            child: _Facts(
+              item: item,
+              playLabel: playLabel,
+              canResume: canResume,
+              onPlay: onPlay,
+              onRestart: onRestart,
+            ),
+          ),
         ],
       ),
     );
@@ -386,9 +388,7 @@ class _Facts extends StatelessWidget {
                     children: [
                       TextSpan(
                         text: '${entry.$1}  ',
-                        style: Type.rem(
-                          0.92,
-                        ).copyWith(color: tokens.inkFaint),
+                        style: Type.rem(0.92).copyWith(color: tokens.inkFaint),
                       ),
                       TextSpan(
                         text: entry.$2.take(3).join(', '),
@@ -482,7 +482,8 @@ class _Meta extends StatelessWidget {
             ),
             child: Text(item.officialRating!, style: style),
           ),
-        if (rating != null) Text('★ ${rating.toStringAsFixed(1)}', style: style),
+        if (rating != null)
+          Text('★ ${rating.toStringAsFixed(1)}', style: style),
         if (item.genres.isNotEmpty)
           Text(item.genres.take(3).join(' · '), style: style),
         if (item.studios.isNotEmpty) Text(item.studios.first, style: style),

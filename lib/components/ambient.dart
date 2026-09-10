@@ -15,7 +15,11 @@ import '../design/theme.dart';
 import '../design/tokens.dart';
 
 class AmbientBackdrop extends StatelessWidget {
-  const AmbientBackdrop({required this.imageUrl, required this.visible, super.key});
+  const AmbientBackdrop({
+    required this.imageUrl,
+    required this.visible,
+    super.key,
+  });
 
   /// Whatever the focused card is showing, or null when nothing has been
   /// focused yet.
@@ -117,7 +121,8 @@ class DetailHero extends StatelessWidget {
                 // `center 18%` — faces and titles live in the upper third of a
                 // backdrop, and centring cuts them in half.
                 alignment: const Alignment(0, -0.64),
-                errorBuilder: (context, error, stack) => const SizedBox.expand(),
+                errorBuilder: (context, error, stack) =>
+                    const SizedBox.expand(),
               ),
             ),
 
@@ -143,10 +148,7 @@ class DetailHero extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.centerLeft,
                 end: Alignment.centerRight,
-                colors: [
-                  tokens.ground,
-                  tokens.ground.withValues(alpha: 0.1),
-                ],
+                colors: [tokens.ground, tokens.ground.withValues(alpha: 0.1)],
                 stops: const [0.05, 0.7],
               ),
             ),

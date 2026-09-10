@@ -160,13 +160,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
               name: 'Theme',
               options: _themes,
               current: preferences.theme,
-              onCycle: (next) => onPreferences(preferences.copyWith(theme: next)),
+              onCycle: (next) =>
+                  onPreferences(preferences.copyWith(theme: next)),
             ),
             _StaticRow(
               name: 'Glassfin',
               // The mark sits on a raised row rather than on the page, so its
               // cuts have to be told what colour they are cut out of.
-              trailing: Logo(size: 36, wordmark: true, cutColour: tokens.raised),
+              trailing: Logo(
+                size: 36,
+                wordmark: true,
+                cutColour: tokens.raised,
+              ),
             ),
           ],
         ),
@@ -376,12 +381,8 @@ class _CycleRow<T> extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) => _Row(
-    name: name,
-    value: _label,
-    enabled: enabled,
-    onSelect: _next,
-  );
+  Widget build(BuildContext context) =>
+      _Row(name: name, value: _label, enabled: enabled, onSelect: _next);
 }
 
 class _ActionRow extends StatelessWidget {

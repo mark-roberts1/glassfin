@@ -229,13 +229,14 @@ class _ScrubBar extends StatelessWidget {
         Expanded(
           child: Focusable(
             group: transportScrubGroup,
-            visual: FocusVisual.ringOnlyOverVideo,
+            visual: FocusVisual.overVideoSurface,
             borderRadius: Radii.pill,
             // Select on the scrubber is play/pause, matching the space bar.
             // Seeking from a D-pad is left and right, which the router hands
             // to this group rather than to navigation.
             onSelect: playback.togglePause,
             child: (context, focused) => _Track(
+              focused: focused,
               fraction: fraction,
               onScrub: (at) => playback.seekTo(
                 Duration(milliseconds: (duration.inMilliseconds * at).round()),
@@ -253,7 +254,17 @@ class _ScrubBar extends StatelessWidget {
 }
 
 class _Track extends StatelessWidget {
-  const _Track({required this.fraction, required this.onScrub});
+  const _Track({
+    required this.focused,
+    required this.fraction,
+    required this.onScrub,
+  });
+
+  /// Focused, the bar thickens and its head grows — the same "grow a little"
+  /// signal the icon controls use, in the one shape that cannot scale. A
+  /// full-width bar under an [AnimatedScale] would push the clocks either side
+  /// of it off their baseline.
+  final bool focused;
 
   final double fraction;
 
@@ -275,14 +286,18 @@ class _Track extends StatelessWidget {
       onHorizontalDragUpdate: (details) =>
           _scrub(details.localPosition.dx, constraints.maxWidth),
       child: SizedBox(
-        // Room for the head, which overflows the track it runs along.
-        height: 16,
+        // Room for the head at its focused size, which overflows the track it
+        // runs along. Fixed rather than growing with focus: a bar that changed
+        // height would move the whole control row under the viewer.
+        height: 20,
         child: Stack(
           alignment: Alignment.centerLeft,
           clipBehavior: Clip.none,
           children: [
-            SizedBox(
-              height: 5,
+            AnimatedContainer(
+              duration: Motion.fast,
+              curve: Motion.ease,
+              height: focused ? 8 : 5,
               child: DecoratedBox(
                 decoration: const BoxDecoration(
                   color: GlassfinTokens.overTrack,
@@ -303,10 +318,12 @@ class _Track extends StatelessWidget {
             // The head is what the eye tracks while seeking; the fill alone is too
             // subtle to follow at a distance.
             Positioned(
-              left: constraints.maxWidth * fraction - 7,
-              child: Container(
-                width: 14,
-                height: 14,
+              left: constraints.maxWidth * fraction - (focused ? 9 : 7),
+              child: AnimatedContainer(
+                duration: Motion.fast,
+                curve: Motion.ease,
+                width: focused ? 18 : 14,
+                height: focused ? 18 : 14,
                 decoration: const BoxDecoration(
                   shape: BoxShape.circle,
                   color: GlassfinTokens.overInk,
@@ -506,8 +523,8 @@ class _IconButton extends StatelessWidget {
 
     return Focusable(
       group: group,
-      visual: FocusVisual.ringOnlyOverVideo,
-      borderRadius: Radii.br,
+      visual: FocusVisual.overVideoControl,
+      borderRadius: Radii.pill,
       enabled: enabled,
       onSelect: onSelect,
       // No Semantics wrapper here. One inside the focus ring's Stack tripped
@@ -515,10 +532,18 @@ class _IconButton extends StatelessWidget {
       // pass over this application should be designed across the whole
       // interface rather than bolted onto the one component that happens to
       // have icons instead of words.
-      child: (context, focused) => Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: Metrics.rem(0.5),
-          vertical: Metrics.rem(0.35),
+      child: (context, focused) => AnimatedContainer(
+        duration: Motion.fast,
+        curve: Motion.ease,
+        // Square padding, so the circle is a circle. It was asymmetric while
+        // this drew a rounded rectangle, which as an ellipse looks like a
+        // mistake rather than a shape.
+        padding: EdgeInsets.all(Metrics.rem(0.45)),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: focused && enabled
+              ? GlassfinTokens.overHighlight
+              : const Color(0x00000000),
         ),
         child: Icon(
           icon,

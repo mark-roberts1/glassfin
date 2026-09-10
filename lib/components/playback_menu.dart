@@ -131,9 +131,7 @@ class _PlaybackMenuState extends State<PlaybackMenu> {
           child: Text(
             'Changing a track the server is transcoding reloads the stream '
             'and takes a moment.',
-            style: Type.rem(
-              0.85,
-            ).copyWith(color: GlassfinTokens.overInkFaint),
+            style: Type.rem(0.85).copyWith(color: GlassfinTokens.overInkFaint),
           ),
         ),
       ],
@@ -219,18 +217,25 @@ class _Row extends StatelessWidget {
     padding: EdgeInsets.only(bottom: Metrics.rem(0.5)),
     child: Focusable(
       group: group,
-      // Ring only, and in `overInk` rather than the page's ink — the menu floats
-      // over the film, so a light-theme ring would vanish into it.
-      visual: FocusVisual.ringOnlyOverVideo,
+      visual: FocusVisual.overVideoSurface,
       onSelect: onSelect,
-      child: (context, focused) => Container(
+      child: (context, focused) => AnimatedContainer(
+        duration: Motion.fast,
+        curve: Motion.ease,
         padding: EdgeInsets.symmetric(
           horizontal: Metrics.rem(1),
           vertical: Metrics.rem(0.7),
         ),
+        // No hairline. Every row carrying its own 1px border turned the menu
+        // into a stack of boxes; the panel fill alone gives it the same shape
+        // with none of the ruling, and focus is the lit row.
         decoration: BoxDecoration(
-          color: GlassfinTokens.overPanel,
-          border: Border.all(color: GlassfinTokens.overEdge),
+          color: focused
+              ? Color.alphaBlend(
+                  GlassfinTokens.overHighlight,
+                  GlassfinTokens.overPanel,
+                )
+              : GlassfinTokens.overPanel,
           borderRadius: Radii.br,
         ),
         child: Row(
@@ -280,9 +285,7 @@ class _Badge extends StatelessWidget {
       vertical: Metrics.rem(0.1),
     ),
     decoration: const BoxDecoration(
-      border: Border.fromBorderSide(
-        BorderSide(color: GlassfinTokens.overEdge),
-      ),
+      border: Border.fromBorderSide(BorderSide(color: GlassfinTokens.overEdge)),
       borderRadius: Radii.chip,
     ),
     child: Text(

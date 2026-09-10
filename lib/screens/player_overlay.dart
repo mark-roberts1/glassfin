@@ -89,7 +89,7 @@ class _PlayerOverlayState extends State<PlayerOverlay> {
           // Black behind the picture rather than the page ground: letterbox bars
           // are part of the film, and a paper-coloured frame around a 2.39:1
           // image is the single most obvious way to look wrong.
-            ColoredBox(
+          ColoredBox(
             color: GlassfinTokens.overOnInk,
             child: Video(
               controller: _video,
@@ -98,8 +98,7 @@ class _PlayerOverlayState extends State<PlayerOverlay> {
             ),
           ),
 
-          if (playback.loading || playback.switching)
-            const _Waiting(),
+          if (playback.loading || playback.switching) const _Waiting(),
 
           if (playback.error != null)
             _Message(text: playback.error!, danger: true),
@@ -120,9 +119,7 @@ class _PlayerOverlayState extends State<PlayerOverlay> {
 
           // Above the transport, and offered rather than taken unless the viewer
           // asked for automatic skipping.
-          if (playback.skip != null &&
-              !widget.menuOpen &&
-              !widget.settingsOpen)
+          if (playback.skip != null && !widget.menuOpen && !widget.settingsOpen)
             Positioned(
               right: metrics.safeX,
               bottom: metrics.safeY + Metrics.rem(9),
@@ -185,9 +182,7 @@ class _Message extends StatelessWidget {
         text,
         textAlign: TextAlign.center,
         style: Type.body.copyWith(
-          color: danger
-              ? GlassfinTokens.overDanger
-              : GlassfinTokens.overInkDim,
+          color: danger ? GlassfinTokens.overDanger : GlassfinTokens.overInkDim,
         ),
       ),
     ),
@@ -207,16 +202,22 @@ class _SkipPrompt extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Focusable(
     group: 'skip',
-    visual: FocusVisual.ringOnlyOverVideo,
+    visual: FocusVisual.overVideoSurface,
     onSelect: onSelect,
-    child: (context, focused) => Container(
+    child: (context, focused) => AnimatedContainer(
+      duration: Motion.fast,
+      curve: Motion.ease,
       padding: EdgeInsets.symmetric(
         horizontal: Metrics.rem(1.4),
         vertical: Metrics.rem(0.75),
       ),
       decoration: BoxDecoration(
-        color: GlassfinTokens.overPanel,
-        border: Border.all(color: GlassfinTokens.overEdge),
+        color: focused
+            ? Color.alphaBlend(
+                GlassfinTokens.overHighlight,
+                GlassfinTokens.overPanel,
+              )
+            : GlassfinTokens.overPanel,
         borderRadius: Radii.br,
       ),
       child: Text(

@@ -70,7 +70,10 @@ class MediaRow extends StatelessWidget {
               left: metrics.safeX,
               bottom: Metrics.rem(0.9),
             ),
-            child: Text(title, style: Type.heading.copyWith(color: tokens.inkDim)),
+            child: Text(
+              title,
+              style: Type.heading.copyWith(color: tokens.inkDim),
+            ),
           ),
           SizedBox(
             height: _trackHeight(context, artHeight, still),
