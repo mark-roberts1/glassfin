@@ -4,8 +4,7 @@ A Jellyfin client for the television, forked from
 [Jellyfin Media Player](https://github.com/jellyfin/jellyfin-media-player).
 
 JMP already solves the hard half of the problem. It embeds **mpv**, which means direct play, HDR,
-bitstreamed audio, and subtitle handling that a browser cannot match. What it does not have is an
-interface you would choose to look at, or one that behaves under a D-pad.
+bitstreamed audio, and subtitle handling that a browser cannot match. What it lacks is proper controller support in my use-case on Bazzite.
 
 Glassfin keeps the playback engine and replaces the interface.
 
