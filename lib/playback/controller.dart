@@ -53,6 +53,12 @@ const Duration noticeTimeout = Duration(seconds: 6);
 /// How far the arrow keys and the seek buttons move.
 const Duration seekStep = Duration(seconds: 30);
 
+/// How far one press of a remote's volume key moves it, out of 100.
+///
+/// Small enough that a held key ramps smoothly rather than in jumps — the input
+/// pipeline repeats a held key every 60ms, so this is a rate as much as a step.
+const double volumeStep = 2;
+
 /// Which track to use, where **`auto` is not the same as null**.
 ///
 /// `null` means "none" — subtitles off. `auto` means "decide from preferences

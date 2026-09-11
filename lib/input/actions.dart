@@ -26,8 +26,21 @@ enum InputAction {
   cycleAudio,
   cycleSubtitles,
   toggleSubtitles,
+  increaseVolume,
+  decreaseVolume,
   exit;
 
+  /// The action name as the mapping files spell it, or null if this is not one
+  /// the interface answers.
+  ///
+  /// **A name with no case here is not an error**, and the list of them is
+  /// deliberate rather than unfinished. The mapping files address a superset of
+  /// what any one client does — `step_forward`, the audio and subtitle delay
+  /// nudges, `toggle_watched`, the coloured CEC buttons — and the Qt build's own
+  /// interface handled exactly the set below and silently dropped the rest. A
+  /// name is added here when there is something for it to do, not before:
+  /// `increase_volume` is the one this rebuild could add, because unlike the Qt
+  /// build it has a volume control for a pad's thumbstick to reach.
   static InputAction? fromId(String id) => switch (id) {
     'up' => up,
     'down' => down,
@@ -47,6 +60,8 @@ enum InputAction {
     'cycle_audio' => cycleAudio,
     'cycle_subtitles' => cycleSubtitles,
     'toggle_subtitles' => toggleSubtitles,
+    'increase_volume' => increaseVolume,
+    'decrease_volume' => decreaseVolume,
     'exit' => exit,
     _ => null,
   };

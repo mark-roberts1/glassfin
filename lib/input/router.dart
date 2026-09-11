@@ -150,6 +150,16 @@ class InputRouter {
       case InputAction.seekBackward || InputAction.left:
         playback.seekBy(-seekStep);
 
+      // A pad's right thumbstick and a remote's volume keys. Note these are
+      // *not* reachable by direction — the volume bar is deliberately not
+      // focusable, because left and right in the transport row belong to moving
+      // between its buttons. This is how a controller reaches volume at all.
+      case InputAction.increaseVolume:
+        playback.setVolume(playback.volume + volumeStep);
+
+      case InputAction.decreaseVolume:
+        playback.setVolume(playback.volume - volumeStep);
+
       default:
         // Everything else is swallowed rather than passed on. This is the total
         // split: up, down, home and search must not navigate a screen the

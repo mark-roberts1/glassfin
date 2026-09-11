@@ -4,6 +4,7 @@ import 'package:window_manager/window_manager.dart';
 
 import 'app.dart';
 import 'design/tokens.dart';
+import 'input/input_map_loader.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,5 +28,10 @@ Future<void> main() async {
     },
   );
 
-  runApp(const GlassfinApp());
+  // Before the first frame, because an application nobody can press a button in
+  // has nothing to show. The files are small and read once; doing this here is
+  // what lets everything downstream treat the mapping as simply present.
+  final inputMaps = await loadInputMaps();
+
+  runApp(GlassfinApp(inputMaps: inputMaps));
 }

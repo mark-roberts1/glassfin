@@ -23,7 +23,9 @@ import 'debug_capture.dart';
 import 'design/metrics.dart';
 import 'design/theme.dart';
 import 'design/tokens.dart';
-import 'input/keyboard.dart';
+import 'input/engine.dart';
+import 'input/host_commands.dart';
+import 'input/input_map.dart';
 import 'input/router.dart';
 import 'input/text_entry.dart';
 import 'jellyfin/client.dart';
@@ -47,7 +49,12 @@ import 'settings/subtitle_appearance.dart';
 import 'settings/video_settings.dart';
 
 class GlassfinApp extends StatefulWidget {
-  const GlassfinApp({super.key});
+  const GlassfinApp({super.key, required this.inputMaps});
+
+  /// `assets/inputmaps/*.json`, loaded before the first frame. Passed in rather
+  /// than loaded here so that every widget below can treat the mapping as simply
+  /// present — there is no useful interface to show while it is missing.
+  final InputMaps inputMaps;
 
   @override
   State<GlassfinApp> createState() => _GlassfinAppState();
@@ -213,6 +220,17 @@ class _GlassfinAppState extends State<GlassfinApp> with WidgetsBindingObserver {
     setState(() => _fullscreen = next);
     await windowManager.setFullScreen(next);
   }
+
+  /// The `host:` half of the input maps — shortcuts that act on the window rather
+  /// than on the interface. See `lib/input/host_commands.dart` for why the list is
+  /// this short.
+  HostCommands get _hostCommands => HostCommands(
+    fullscreen: () => unawaited(_toggleFullscreen()),
+    minimize: () => unawaited(windowManager.minimize()),
+    // `close` rather than `exit`, so the lifecycle observer above still runs and
+    // the resume point is written. Ctrl+W mid-film should not cost ten seconds.
+    quit: () => unawaited(windowManager.close()),
+  );
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -408,6 +426,8 @@ class _GlassfinAppState extends State<GlassfinApp> with WidgetsBindingObserver {
 
     if (client == null || playback == null) {
       return _InputHost(
+        maps: widget.inputMaps,
+        host: _hostCommands,
         // Nothing is playing on the sign-in screen, but the router still owns
         // the keyboard: text entry and directional movement both come through
         // it.
@@ -433,6 +453,8 @@ class _GlassfinAppState extends State<GlassfinApp> with WidgetsBindingObserver {
     final playing = playback.isPlaying;
 
     return _InputHost(
+      maps: widget.inputMaps,
+      host: _hostCommands,
       playback: playback,
       menuOpen: _menuOpen,
       onOpenMenu: () => setState(() => _menuOpen = true),
@@ -573,8 +595,15 @@ class _GlassfinAppState extends State<GlassfinApp> with WidgetsBindingObserver {
 /// so that `moveFocus` reaches Glassfin's own policy. Built above it, it would
 /// silently find Flutter's default one and the three deliberate navigation
 /// behaviours would quietly stop applying.
-class _InputHost extends StatelessWidget {
+///
+/// Stateful for one reason: the [InputEngine] holds the long-press clock and the
+/// autorepeat timer, and a widget rebuild — which happens on every frame of
+/// playback — must not reset either. The engine is created once and asked for the
+/// *current* router each time an action fires.
+class _InputHost extends StatefulWidget {
   const _InputHost({
+    required this.maps,
+    required this.host,
     required this.playback,
     required this.textEntry,
     required this.onCommitTextEntry,
@@ -589,6 +618,8 @@ class _InputHost extends StatelessWidget {
     this.onHome,
   });
 
+  final InputMaps maps;
+  final HostCommands host;
   final PlaybackController? playback;
   final TextEntrySession? textEntry;
   final VoidCallback onCommitTextEntry;
@@ -603,30 +634,64 @@ class _InputHost extends StatelessWidget {
   final VoidCallback? onHome;
 
   @override
-  Widget build(BuildContext context) {
-    final router = InputRouter(
-      playback: playback,
-      onNavigate: (action) => moveFocus(context, action),
-      menuOpen: menuOpen,
-      onOpenMenu: onOpenMenu,
-      onCloseMenu: onCloseMenu,
-      settingsOpen: settingsOpen,
-      onCloseSettings: onCloseSettings,
-      onSearch: onSearch,
-      onHome: onHome,
-      onBack: onBack,
-    );
+  State<_InputHost> createState() => _InputHostState();
+}
 
+class _InputHostState extends State<_InputHost> {
+  late InputEngine _engine;
+
+  /// **Eagerly, not as a `late final` initialiser.** The engine starts the
+  /// gamepad poller when it is constructed, and a lazy field is only constructed
+  /// on first access — which here would be the first *keyboard* event. A pad
+  /// would then do nothing until someone pressed a key, which is precisely the
+  /// situation it exists to avoid.
+  @override
+  void initState() {
+    super.initState();
+    _engine = InputEngine(
+      maps: widget.maps,
+      host: widget.host,
+      router: _router,
+      // Only while a field is actually open, which is what makes a remote's
+      // number keys type into it and do nothing otherwise.
+      onText: () => widget.textEntry?.insert,
+    );
+  }
+
+  /// Built fresh each time an action fires, from the state of *this* frame.
+  ///
+  /// `context` here is the State's own, which sits beneath the
+  /// [FocusTraversalGroup] — so `moveFocus` finds Glassfin's policy rather than
+  /// Flutter's default.
+  InputRouter _router() => InputRouter(
+    playback: widget.playback,
+    onNavigate: (action) => moveFocus(context, action),
+    menuOpen: widget.menuOpen,
+    onOpenMenu: widget.onOpenMenu,
+    onCloseMenu: widget.onCloseMenu,
+    settingsOpen: widget.settingsOpen,
+    onCloseSettings: widget.onCloseSettings,
+    onSearch: widget.onSearch,
+    onHome: widget.onHome,
+    onBack: widget.onBack,
+  );
+
+  @override
+  void dispose() {
+    _engine.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Focus(
       autofocus: true,
       onKeyEvent: (node, event) {
-        if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
-          return KeyEventResult.ignored;
-        }
-
         // Debug builds only, and ahead of everything else so that no screen —
         // including a text field, which eats printable keys — can swallow it.
-        if (kDebugMode && event.logicalKey == LogicalKeyboardKey.f12) {
+        if (kDebugMode &&
+            event is KeyDownEvent &&
+            event.logicalKey == LogicalKeyboardKey.f12) {
           unawaited(captureWindow());
           return KeyEventResult.handled;
         }
@@ -636,18 +701,22 @@ class _InputHost extends StatelessWidget {
         // to be reconstructed from actions. Here Flutter delivers real
         // characters with real case, and this is what lets a physical keyboard
         // and the on-screen one write into the same field mid-word.
-        final entry = textEntry;
-        if (entry != null && _typeInto(entry, event)) {
+        final entry = widget.textEntry;
+        if (entry != null &&
+            event is! KeyUpEvent &&
+            _typeInto(entry, event)) {
           return KeyEventResult.handled;
         }
 
-        final action = actionForKey(event);
-        if (action == null) return KeyEventResult.ignored;
-        return router.handle(action)
+        // **Key-ups reach the engine too**, which they did not before Phase 6:
+        // they are what tells a short press from a long one, and what stops a
+        // held key repeating. Returning `ignored` for them would be harmless
+        // today but would leak every mapped release into Flutter's own handling.
+        return _engine.handleKey(event)
             ? KeyEventResult.handled
             : KeyEventResult.ignored;
       },
-      child: child,
+      child: widget.child,
     );
   }
 
@@ -664,7 +733,7 @@ class _InputHost extends StatelessWidget {
     // on-screen key has focus.
     if (event.logicalKey == LogicalKeyboardKey.enter ||
         event.logicalKey == LogicalKeyboardKey.numpadEnter) {
-      onCommitTextEntry();
+      widget.onCommitTextEntry();
       return true;
     }
 
