@@ -51,9 +51,19 @@ dependencies:
   # Inhibit the screensaver during playback, replacing src/power/.
   wakelock_plus: ^1.8.0
 
+  # Gamepads, by FFI to SDL2's joystick subsystem — see lib/input/gamepad.dart.
+  # Only for the string and allocation helpers; dart:ffi does the rest.
+  ffi: ^2.1.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
+
+  # Lets the input pipeline's tuned timings — 500ms to count as a held button,
+  # 650ms then 60ms to autorepeat — be tested in no time at all rather than by
+  # actually waiting. Declared rather than picked up transitively from
+  # flutter_test, since the tests import it directly.
+  fake_async: ^1.3.3
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
