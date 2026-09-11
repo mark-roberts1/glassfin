@@ -148,6 +148,11 @@ class PlaybackController extends ChangeNotifier {
   int? _subtitleIndex;
 
   double _volume = 100;
+
+  /// Where the volume was before it was muted, so unmuting puts it back rather
+  /// than guessing at 100. Null when not muted.
+  double? _volumeBeforeMute;
+
   double _rate = 1;
   bool _looping = false;
   AspectMode _aspect = AspectMode.auto;
@@ -417,6 +422,11 @@ class PlaybackController extends ChangeNotifier {
     _switching = false;
     _chromeTimer?.cancel();
     _noticeTimer?.cancel();
+    // Without this the scan timer outlives the film and goes on seeking a player
+    // with nothing loaded.
+    _scanTimer?.cancel();
+    _scanTimer = null;
+    _scanRate = 0;
     notifyListeners();
   }
 
@@ -878,10 +888,150 @@ class PlaybackController extends ChangeNotifier {
 
   Future<void> seekBy(Duration delta) => seekTo(_position + delta);
 
+  // ---- Scanning -------------------------------------------------------------
+
+  /// The slowest rate worth having.
+  ///
+  /// Nothing below 2× is distinguishable from ordinary playback in the forward
+  /// direction, and 2× backward is about right for catching a line of dialogue
+  /// that was missed — one second of holding moves two seconds of film.
+  static const int scanInitialRate = 2;
+
+  /// 32× crosses a feature film in about four minutes, which is as coarse as a
+  /// scan can be and still land somewhere on purpose.
+  static const int scanMaxRate = 32;
+
+  /// How often the scan moves. Short enough to read as motion rather than as a
+  /// series of jumps, long enough that mpv is not asked to seek continuously.
+  static const Duration scanTick = Duration(milliseconds: 250);
+
+  /// Scanning forward stops here rather than at the very end, which would
+  /// trigger the end-of-file handling and start the next episode.
+  static const Duration scanEndGuard = Duration(seconds: 5);
+
+  int _scanRate = 0;
+  Timer? _scanTimer;
+  bool _pausedBeforeScan = false;
+
+  /// Where the scan has travelled to.
+  ///
+  /// Tracked here rather than read back from [position] on each tick: mpv's
+  /// reported position arrives on a stream and lags a seek slightly, so
+  /// accumulating from it makes the rate sag — and sag unevenly, which reads as
+  /// the pad being unreliable rather than as the scan being slow.
+  Duration _scanTarget = Duration.zero;
+
+  /// Signed: negative is backward, and the magnitude is the multiplier. Zero when
+  /// not scanning.
+  int get scanRate => _scanRate;
+  bool get scanning => _scanRate != 0;
+
+  /// Start scanning, or go twice as fast.
+  ///
+  /// [direction] is -1 for backward and 1 for forward. Pressing the opposite
+  /// direction does not halve the rate — it turns around at the slowest rate,
+  /// because the reason anyone presses the other way is that they have overshot
+  /// and want to creep back, not that they want to keep going fast the other way.
+  Future<void> scan(int direction) async {
+    if (_session == null) return;
+
+    final forward = direction > 0;
+    final sameWay = _scanRate != 0 && (_scanRate > 0) == forward;
+    final magnitude = sameWay
+        ? (_scanRate.abs() * 2).clamp(scanInitialRate, scanMaxRate)
+        : scanInitialRate;
+
+    if (_scanRate == 0) {
+      // **Paused for the duration.** Audio at 8× is noise, and mpv would go on
+      // decoding it between seeks.
+      _pausedBeforeScan = _paused;
+      _scanTarget = _position;
+      await _player.pause();
+      _scanTimer = Timer.periodic(scanTick, (_) => _advanceScan());
+    }
+
+    _scanRate = forward ? magnitude : -magnitude;
+    nudgeChrome();
+  }
+
+  void _advanceScan() {
+    if (_scanRate == 0) return;
+
+    final travelled = scanTick * _scanRate.abs();
+    final next = _scanRate > 0
+        ? _scanTarget + travelled
+        : _scanTarget - travelled;
+
+    if (next <= Duration.zero) {
+      _scanTarget = Duration.zero;
+      unawaited(seekTo(Duration.zero));
+      unawaited(endScan());
+      return;
+    }
+
+    final ceiling = _duration - scanEndGuard;
+    if (_duration > scanEndGuard && next >= ceiling) {
+      _scanTarget = ceiling;
+      unawaited(seekTo(ceiling));
+      unawaited(endScan());
+      return;
+    }
+
+    _scanTarget = next;
+    unawaited(seekTo(next));
+    // Holds the transport and the rate indicator up for as long as the scan
+    // runs, rather than letting them fade out from under it.
+    nudgeChrome();
+  }
+
+  /// Stop scanning and carry on from here.
+  ///
+  /// [resume] false leaves the player paused regardless — for a teardown, where
+  /// starting playback on the way out would be absurd.
+  Future<void> endScan({bool resume = true}) async {
+    if (_scanRate == 0) return;
+
+    _scanTimer?.cancel();
+    _scanTimer = null;
+    _scanRate = 0;
+    notifyListeners();
+
+    // Back to whatever it was doing before. Someone who paused the film and then
+    // scanned through it wanted to look, not to watch.
+    if (resume && !_pausedBeforeScan) await _player.play();
+  }
+
   Future<void> setVolume(double value) async {
     _volume = value.clamp(0, 100);
+    // Moving the volume by any other means is an implicit unmute: coming back
+    // from a mute to a *remembered* level would then fight what was just asked
+    // for.
+    if (_volume > 0) _volumeBeforeMute = null;
     notifyListeners();
     await _player.setVolume(_volume);
+  }
+
+  bool get muted => _volume <= 0;
+
+  /// Silence, and back to where it was.
+  ///
+  /// Not the same as turning the volume down to zero and up again: the level it
+  /// returns to is the one it left, so muting to answer the door does not also
+  /// lose the level that took a minute to get right. A mute with nothing
+  /// remembered — set to zero by hand, then muted — comes back at a level that is
+  /// at least audible, since returning to silence would look like a dead button.
+  Future<void> toggleMute() async {
+    if (muted) {
+      final restored = _volumeBeforeMute ?? 50;
+      _volumeBeforeMute = null;
+      await setVolume(restored);
+      return;
+    }
+
+    _volumeBeforeMute = _volume;
+    _volume = 0;
+    notifyListeners();
+    await _player.setVolume(0);
   }
 
   Future<void> setRate(double value) async {
@@ -955,6 +1105,7 @@ class PlaybackController extends ChangeNotifier {
     _chromeTimer?.cancel();
     _noticeTimer?.cancel();
     _progressTimer?.cancel();
+    _scanTimer?.cancel();
     for (final subscription in _playerSubscriptions) {
       unawaited(subscription.cancel());
     }

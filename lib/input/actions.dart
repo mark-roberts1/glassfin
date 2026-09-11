@@ -23,11 +23,18 @@ enum InputAction {
   stop,
   seekForward,
   seekBackward,
+
+  /// Continuous scan, doubling on each press. Distinct from [seekForward], which
+  /// is a fixed jump — a pad's shoulder buttons scan, the transport's own arrows
+  /// and a keyboard's page keys jump.
+  fastForward,
+  rewind,
   cycleAudio,
   cycleSubtitles,
   toggleSubtitles,
   increaseVolume,
   decreaseVolume,
+  mute,
   exit;
 
   /// The action name as the mapping files spell it, or null if this is not one
@@ -57,11 +64,14 @@ enum InputAction {
     'stop' => stop,
     'seek_forward' => seekForward,
     'seek_backward' => seekBackward,
+    'fast_forward' => fastForward,
+    'rewind' => rewind,
     'cycle_audio' => cycleAudio,
     'cycle_subtitles' => cycleSubtitles,
     'toggle_subtitles' => toggleSubtitles,
     'increase_volume' => increaseVolume,
     'decrease_volume' => decreaseVolume,
+    'mute' || 'toggle_mute' => mute,
     'exit' => exit,
     _ => null,
   };

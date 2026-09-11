@@ -114,20 +114,88 @@ class InputRouter {
     // With the chrome down there is nothing on screen to move between, so the
     // directions mean what they mean on any player: left and right seek, up
     // reveals the tracks. With the chrome up, focus is inside the transport and
-    // the same keys have to move between its buttons instead — otherwise the
-    // row is visible and unreachable, which is the dead end the couch bar
-    // exists to prevent.
+    // the same keys have to move between its rows and buttons instead —
+    // otherwise a control is visible and unreachable, which is the dead end the
+    // couch bar exists to prevent.
     //
-    // The scrubber is the exception, and deliberately so: it is shaped like a
-    // slider, so left and right seek while it holds focus.
-    if (_inTransportRow) return onNavigate(action);
+    // **Only the directions and select are positional.** Everything else — back,
+    // stop, play/pause, the track cycling, volume — belongs to the transport
+    // wherever focus happens to be sitting. Handing those to navigation too is
+    // how Back stopped working the moment the chrome came up: `moveFocus` has no
+    // case for it, so it returned false and the film carried on.
+    // **A scan has to be stoppable by the obvious buttons**, and it has to be
+    // stoppable before they mean anything else. While one is running the film is
+    // travelling on its own, so OK and play/pause mean "stop here and carry on"
+    // rather than what they usually mean — and a direction means "stop, then move
+    // the way I asked".
+    if (playback.scanning) {
+      switch (action) {
+        case InputAction.select ||
+            InputAction.playPause ||
+            InputAction.play ||
+            InputAction.pause:
+          playback.endScan();
+          return true;
 
-    if (action == InputAction.up || action == InputAction.menu) {
-      onOpenMenu?.call();
-      return true;
+        case InputAction.up ||
+            InputAction.down ||
+            InputAction.left ||
+            InputAction.right ||
+            InputAction.menu ||
+            InputAction.seekForward ||
+            InputAction.seekBackward:
+          playback.endScan();
+          // Falls through to the ordinary handling below, so the direction that
+          // stopped the scan also does its usual job. Pressing Left to stop and
+          // then having to press it again would feel broken.
+          break;
+
+        case InputAction.rewind || InputAction.fastForward:
+          // Doubling, or turning round. Handled below.
+          break;
+
+        default:
+          break;
+      }
     }
 
+    final scope = _focusedOverFilm;
+
     switch (action) {
+      case InputAction.up || InputAction.down:
+        // Within the chrome, vertical movement crosses its rows — the title bar,
+        // the skip offer, the scrub bar, the controls. This is what was missing:
+        // anything not recognised above reached the catch-all below and was
+        // swallowed, so there was no way off it.
+        if (scope != null && onNavigate(action)) return true;
+        // Past the top of the chrome, or with the chrome down, Up reveals the
+        // tracks. Down has nothing above the picture to reach.
+        if (action == InputAction.up) onOpenMenu?.call();
+        return true;
+
+      case InputAction.left || InputAction.right:
+        // The scrubber is the exception, and deliberately so: it is shaped like a
+        // slider, so left and right seek while it holds focus rather than moving
+        // off it.
+        if (scope == _OverFilm.controls) return onNavigate(action);
+        playback.seekBy(action == InputAction.right ? seekStep : -seekStep);
+        return true;
+
+      case InputAction.select:
+        // Presses whatever has focus; pauses when nothing in the chrome does.
+        if (scope != null) return onNavigate(action);
+        playback.togglePause();
+        return true;
+
+      default:
+        break;
+    }
+
+    // Everything below is the transport's regardless of focus.
+    switch (action) {
+      case InputAction.menu:
+        onOpenMenu?.call();
+
       case InputAction.cycleAudio:
         playback.cycleAudio();
       case InputAction.cycleSubtitles:
@@ -135,20 +203,27 @@ class InputRouter {
       case InputAction.toggleSubtitles:
         playback.toggleSubtitles();
 
-      case InputAction.playPause ||
-          InputAction.select ||
-          InputAction.play ||
-          InputAction.pause:
+      case InputAction.playPause || InputAction.play || InputAction.pause:
         playback.togglePause();
 
+      // **Wherever focus is.** A pad's Circle while the chrome is up is still
+      // "leave this film", not "move the highlight".
       case InputAction.back || InputAction.stop || InputAction.exit:
         playback.stop();
 
-      case InputAction.seekForward || InputAction.right:
+      case InputAction.seekForward:
         playback.seekBy(seekStep);
 
-      case InputAction.seekBackward || InputAction.left:
+      case InputAction.seekBackward:
         playback.seekBy(-seekStep);
+
+      // A pad's shoulder buttons. Each press doubles the rate; see
+      // [PlaybackController.scan].
+      case InputAction.fastForward:
+        playback.scan(1);
+
+      case InputAction.rewind:
+        playback.scan(-1);
 
       // A pad's right thumbstick and a remote's volume keys. Note these are
       // *not* reachable by direction — the volume bar is deliberately not
@@ -159,6 +234,9 @@ class InputRouter {
 
       case InputAction.decreaseVolume:
         playback.setVolume(playback.volume - volumeStep);
+
+      case InputAction.mute:
+        playback.toggleMute();
 
       default:
         // Everything else is swallowed rather than passed on. This is the total
@@ -185,13 +263,34 @@ class InputRouter {
   }
 }
 
-/// Whether focus is on one of the transport's buttons, as opposed to the
-/// scrubber, the picture, or a screen hidden behind the film.
-bool get _inTransportRow {
+/// What kind of thing over the film has focus, if any.
+///
+/// Everything here answers **up and down the same way** — they move between the
+/// things drawn over the picture, and a group left out of this list is a group you
+/// cannot navigate away from. That was the bug twice over: the scrub bar, and then
+/// the skip offer, both read as "not part of the player", so pressing Down on
+/// either did nothing at all.
+///
+/// They differ only on the horizontal, and only because of what they look like.
+enum _OverFilm {
+  /// A row of buttons. Every direction moves between them, because that is what a
+  /// toolbar does.
+  controls,
+
+  /// The scrub bar and the skip offer. Up and down leave; left and right seek,
+  /// because the scrubber is shaped like a slider and the skip offer is a single
+  /// button with nothing beside it to move to.
+  seeking,
+}
+
+_OverFilm? get _focusedOverFilm {
   final focused = FocusManager.instance.primaryFocus;
-  if (focused == null) return false;
-  final group = NavRegistry.instance.infoFor(focused)?.group;
-  return group == transportGroup || group == transportTopGroup;
+  if (focused == null) return null;
+  return switch (NavRegistry.instance.infoFor(focused)?.group) {
+    transportGroup || transportTopGroup => _OverFilm.controls,
+    transportScrubGroup || skipGroup => _OverFilm.seeking,
+    _ => null,
+  };
 }
 
 /// Turns [InputAction] directions into focus movement.

@@ -242,6 +242,19 @@ class Gamepads {
   /// build keyed this on the axis alone, so two pads shared one state.
   final Map<(int, int), bool> _axisUp = {};
 
+  /// Axes whose resting position has been established.
+  ///
+  /// **A trigger rests at full deflection, not at zero.** L2 and R2 report
+  /// -32768 when untouched, which is well past the threshold, so the first event
+  /// from each one looks exactly like someone slamming it to the stop. The
+  /// original emitted that, and a map that bound `KEY_AXIS_4_UP` would fire it
+  /// once on every launch for a button nobody pressed.
+  ///
+  /// So the first sighting of an axis records where it sits and says nothing. The
+  /// cost is that a stick already held when the application starts is ignored
+  /// until it is released, which is the better of the two mistakes.
+  final Set<(int, int)> _axisSeen = {};
+
   /// The last non-centred hat direction, per joystick. SDL reports a hat's
   /// release as "centred" with no direction attached, so the direction to send a
   /// key-up for has to be remembered — and without that key-up, a held D-pad
@@ -304,6 +317,7 @@ class Gamepads {
     }
     _joysticks.clear();
     _axisUp.clear();
+    _axisSeen.clear();
     _lastHat.clear();
 
     final event = _event;
@@ -413,10 +427,16 @@ class Gamepads {
 
     String code(bool isUp) => 'KEY_AXIS_${axis.axis}_${isUp ? "UP" : "DOWN"}';
 
+    final firstSighting = _axisSeen.add(key);
+
     if (magnitude > axisOnThreshold) {
       if (current == null) {
         _axisUp[key] = up;
-        onInput(_nameFor(axis.which), code(up), KeyState.down);
+        // Already deflected the first time we look at it: that is where it lives,
+        // not something that just happened.
+        if (!firstSighting) {
+          onInput(_nameFor(axis.which), code(up), KeyState.down);
+        }
       } else if (current != up) {
         // Pushed hard the other way without crossing back through the dead zone.
         onInput(_nameFor(axis.which), code(current), KeyState.up);
@@ -446,6 +466,7 @@ class Gamepads {
     // A reopened device may have a different instance id, so any remembered
     // direction now refers to nothing.
     _axisUp.clear();
+    _axisSeen.clear();
     _lastHat.clear();
 
     final count = sdl.numJoysticks();

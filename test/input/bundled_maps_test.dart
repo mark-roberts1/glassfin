@@ -168,6 +168,27 @@ void main() {
       expect(_actions(maps, 'Wireless Controller', 'KEY_AXIS_1_DOWN'), ['down']);
     });
 
+    test('the DualShock 4 layout, as the owner asked for it', () {
+      // SDL's gamepad button order, confirmed on hardware — the numbers are not
+      // guessable and the file's original comments mislabelled several of them.
+      const expected = {
+        'KEY_BUTTON_0': 'enter', //      X
+        'KEY_BUTTON_2': 'mute', //       Square
+        'KEY_BUTTON_3': 'menu', //       Triangle
+        'KEY_BUTTON_4': 'host:fullscreen', // Share
+        'KEY_BUTTON_6': 'play_pause', // Options
+        'KEY_BUTTON_9': 'rewind', //     L1
+        'KEY_BUTTON_10': 'fast_forward', // R1
+        'KEY_BUTTON_11': 'search', //    Touchpad
+        'KEY_AXIS_4_DOWN': 'decrease_volume', // L2
+        'KEY_AXIS_5_DOWN': 'increase_volume', // R2
+      };
+
+      expected.forEach((key, action) {
+        expect(_actions(maps, 'PS4 Controller', key), [action], reason: key);
+      });
+    });
+
     test('a DualShock 4 over USB, which renumbers every button', () {
       // Same pad, same actions, different numbers: over USB the kernel reports X
       // as button 0 where Bluetooth reports it as button 1. This is exactly why
