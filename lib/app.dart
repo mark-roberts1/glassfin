@@ -49,7 +49,16 @@ import 'settings/subtitle_appearance.dart';
 import 'settings/video_settings.dart';
 
 class GlassfinApp extends StatefulWidget {
-  const GlassfinApp({super.key, required this.inputMaps});
+  const GlassfinApp({
+    super.key,
+    required this.inputMaps,
+    this.fullscreen = false,
+  });
+
+  /// Whether the window was *already* made fullscreen before the first frame, by
+  /// the `--fullscreen` launcher action. Only the initial value: the fullscreen
+  /// button owns it from here.
+  final bool fullscreen;
 
   /// `assets/inputmaps/*.json`, loaded before the first frame. Passed in rather
   /// than loaded here so that every widget below can treat the mapping as simply
@@ -79,7 +88,7 @@ class _GlassfinAppState extends State<GlassfinApp> with WidgetsBindingObserver {
   String? _ambient;
   bool _menuOpen = false;
   bool _settingsOpen = false;
-  bool _fullscreen = false;
+  late bool _fullscreen = widget.fullscreen;
 
   /// The keyboard sheet's session, when one is open.
   TextEntrySession? _modalEntry;
