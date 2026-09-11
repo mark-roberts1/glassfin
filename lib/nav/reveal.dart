@@ -94,6 +94,63 @@ void reveal(BuildContext context, {bool animate = true}) {
   }
 }
 
+/// How far one nudge of the scroll control moves, as a fraction of the viewport.
+///
+/// Tuned for **holding** rather than tapping, because that is what a thumbstick
+/// is for: the input pipeline repeats a held direction every 60ms, so this works
+/// out at a little under one screenful per second, which is about reading pace.
+/// A single flick therefore moves only a little.
+///
+/// The honest limitation: an analogue stick knows how far it has been pushed and
+/// this does not, because the input layer turns axes into directions before
+/// anything sees them. Velocity-proportional scrolling would need that value
+/// carried through, which is a real improvement and a larger change than this.
+const double scrollNudge = 0.07;
+
+/// Scrolls the nearest vertically scrolling ancestor of [context].
+///
+/// **For content, not for controls.** Directional navigation moves between
+/// focusable things and scrolls them into view as it goes; this exists for
+/// everything that is not focusable and never will be — a film's synopsis, a cast
+/// list, the long tail of a detail screen. None of that should be focusable just
+/// to be reachable, and leaving it unreachable fails the couch bar just as surely
+/// as a dead end does.
+///
+/// [fraction] is signed: positive scrolls down. Returns whether anything moved,
+/// so a caller can let the press mean something else when it did not.
+bool scrollVertically(BuildContext context, double fraction) {
+  for (final scrollable in _scrollableAncestors(context)) {
+    if (axisDirectionToAxis(scrollable.axisDirection) != Axis.vertical) {
+      // A card inside a horizontal shelf: keep looking upward for the page.
+      continue;
+    }
+
+    final position = scrollable.position;
+    if (!position.hasPixels || !position.hasContentDimensions) continue;
+    // A page that fits on screen is not a page that failed to scroll.
+    if (position.maxScrollExtent <= position.minScrollExtent) return false;
+
+    final target = (position.pixels + position.viewportDimension * fraction)
+        .clamp(position.minScrollExtent, position.maxScrollExtent);
+    if (target == position.pixels) return false;
+
+    if (MediaQuery.disableAnimationsOf(context)) {
+      position.jumpTo(target);
+    } else {
+      // Linear, and longer than the 60ms repeat interval on purpose: each nudge
+      // replaces the one still running, and an eased curve would decelerate into
+      // every replacement and read as juddering rather than scrolling.
+      position.animateTo(
+        target,
+        duration: const Duration(milliseconds: 140),
+        curve: Curves.linear,
+      );
+    }
+    return true;
+  }
+  return false;
+}
+
 /// Every [ScrollableState] above [context], innermost first.
 ///
 /// A card inside a horizontal shelf inside a vertically scrolling page has two,

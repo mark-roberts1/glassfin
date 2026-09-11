@@ -35,6 +35,13 @@ enum InputAction {
   increaseVolume,
   decreaseVolume,
   mute,
+
+  /// Move the page, as opposed to moving the focus.
+  ///
+  /// For content that is not focusable and should not be made focusable to be
+  /// reachable — a synopsis, a cast list. See [scrollVertically].
+  scrollUp,
+  scrollDown,
   exit;
 
   /// The action name as the mapping files spell it, or null if this is not one
@@ -72,6 +79,8 @@ enum InputAction {
     'increase_volume' => increaseVolume,
     'decrease_volume' => decreaseVolume,
     'mute' || 'toggle_mute' => mute,
+    'scroll_up' => scrollUp,
+    'scroll_down' => scrollDown,
     'exit' => exit,
     _ => null,
   };

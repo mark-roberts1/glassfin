@@ -282,6 +282,8 @@ each because the original behaviour was a bug or an accident rather than a decis
 | `"KEY_BUTTON_8": ""` | an action named `""` | unbound, no action | Fired nothing, but did start the 60ms autorepeat timer for as long as an unbound button was held. |
 | Synthetic autorepeat | ran for every source, keyboard included | **pad and remote only** | The OS already repeats a held key at the rate its owner chose. The original only avoided doubling it because Qt's repeat arrived faster than the 650ms delay and kept resetting the timer — a coincidence of two unrelated numbers. |
 | Axis / hat state | keyed on axis number alone | keyed on `(joystick, axis)` | Two pads shared one state. |
+| Array-valued mappings | fired, but never autorepeated | repeat like any other action | The two value forms went down different branches of a `QVariant` type check and only one appended to the autorepeat list. Glassfin needs the other behaviour: the right thumbstick is mapped to `["scroll_down", "decrease_volume"]`, and a held stick that moved the page exactly once would be useless. |
+| Trigger at rest | reported as a press on the first event | first sighting records position silently | L2 and R2 rest at **full negative deflection**, so the first reading from each is indistinguishable from slamming it to the stop. |
 | Match cache | hits only | hits and misses | Every unmapped key re-walked the whole pattern list. The list is immutable after load, so a negative cannot go stale. |
 
 Two things in the original that look like divergences and are not. `cycle_subtitle` is a typo for

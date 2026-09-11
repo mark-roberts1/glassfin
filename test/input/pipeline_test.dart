@@ -213,6 +213,41 @@ void main() {
       });
     });
 
+    test('an array value repeats, which the original did not do', () {
+      // The Qt build appended only single-string actions to its autorepeat list,
+      // because the two forms went down different branches of a type check — an
+      // accident of QVariant rather than a decision. Unifying them here turned out
+      // to be what the right thumbstick needs: it is mapped to an array, scroll
+      // plus volume, and a held stick that moved the page exactly once would be
+      // useless.
+      fakeAsync((async) {
+        final emitted = <String>[];
+        final pipeline = InputPipeline(
+          maps: _maps('{"KEY_AXIS_3_DOWN": ["scroll_down", "decrease_volume"]}'),
+          onActions: emitted.addAll,
+        );
+
+        pipeline.receive('Pad', 'KEY_AXIS_3_DOWN', KeyState.down);
+        expect(emitted, ['scroll_down', 'decrease_volume']);
+
+        async.elapse(const Duration(milliseconds: 800));
+        expect(
+          emitted.length,
+          greaterThan(2),
+          reason: 'a held stick should keep scrolling',
+        );
+        // Both actions repeat together, so context can keep choosing between them.
+        expect(emitted.where((a) => a == 'scroll_down').length, greaterThan(1));
+        expect(
+          emitted.where((a) => a == 'decrease_volume').length,
+          greaterThan(1),
+        );
+
+        pipeline.receive('Pad', 'KEY_AXIS_3_DOWN', KeyState.up);
+        pipeline.dispose();
+      });
+    });
+
     test('an unbound button does not start the repeat timer', () {
       // `"KEY_BUTTON_8": ""` is a real line in the bundled pads. The original
       // read it as an action named "", which fired nothing but did set a 60ms

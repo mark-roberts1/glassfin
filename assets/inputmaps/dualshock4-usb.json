@@ -71,9 +71,18 @@
     "KEY_AXIS_1_UP": "up",
     "KEY_AXIS_1_DOWN": "down",
 
-    // Right thumbstick — volume up and down, audio delay left and right
-    "KEY_AXIS_3_UP": "increase_volume",
-    "KEY_AXIS_3_DOWN": "decrease_volume",
+    // Right thumbstick vertical — **two meanings, resolved by context.** Browsing,
+    // it scrolls the page, which is the only way to reach content that is not
+    // focusable and should not be made focusable just to be reachable: a synopsis,
+    // a cast list. During a film there is nothing to scroll, so the scroll action
+    // declines and the volume one takes it.
+    //
+    // This is what an array value is for, and the order is the priority.
+    "KEY_AXIS_3_UP": ["scroll_up", "increase_volume"],
+    "KEY_AXIS_3_DOWN": ["scroll_down", "decrease_volume"],
+
+    // Right thumbstick horizontal — audio delay
+
     "KEY_AXIS_2_UP": "decrease_audio_delay",
     "KEY_AXIS_2_DOWN": "increase_audio_delay"
   }

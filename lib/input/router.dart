@@ -15,6 +15,7 @@ import 'package:flutter/widgets.dart';
 import '../components/transport.dart';
 import '../nav/pointer.dart';
 import '../nav/registry.dart';
+import '../nav/reveal.dart' show scrollNudge, scrollVertically;
 import '../playback/controller.dart';
 import 'actions.dart';
 
@@ -238,6 +239,15 @@ class InputRouter {
       case InputAction.mute:
         playback.toggleMute();
 
+      // **Declined, not swallowed.** The right thumbstick scrolls a page and
+      // changes the volume, and the mapping file lists both actions against it so
+      // that one stick can mean both things. Returning false here is what lets the
+      // engine fall through to the volume action — there is nothing to scroll
+      // over a film, and anything above this already handled the case where a
+      // menu is open and there is.
+      case InputAction.scrollUp || InputAction.scrollDown:
+        return false;
+
       default:
         // Everything else is swallowed rather than passed on. This is the total
         // split: up, down, home and search must not navigate a screen the
@@ -299,6 +309,22 @@ _OverFilm? get _focusedOverFilm {
 /// *who* gets the action, and this stays the decision about what a direction
 /// means.
 bool moveFocus(BuildContext context, InputAction action) {
+  // Moving the page rather than the focus. Handled here because this is already
+  // the one place that knows what a direction means *and* holds a context to
+  // resolve it against — and because from the viewer's side it is the same
+  // gesture: push a stick, see more of the screen.
+  //
+  // Resolved from the focused node rather than from [context] so it finds the
+  // scroller the viewer is actually inside; the router's own context is above
+  // every screen and would find nothing.
+  if (action == InputAction.scrollUp || action == InputAction.scrollDown) {
+    final anchor = FocusManager.instance.primaryFocus?.context ?? context;
+    return scrollVertically(
+      anchor,
+      action == InputAction.scrollDown ? scrollNudge : -scrollNudge,
+    );
+  }
+
   final direction = switch (action) {
     InputAction.up => TraversalDirection.up,
     InputAction.down => TraversalDirection.down,
