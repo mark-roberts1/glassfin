@@ -44,6 +44,12 @@ const Duration resumeFloor = Duration(seconds: 10);
 /// How long the transport stays up after the last button press.
 const Duration chromeTimeout = Duration(seconds: 4);
 
+/// How long a survivable mpv complaint stays on screen.
+///
+/// Long enough to read from a sofa, short enough that it does not become part
+/// of the picture.
+const Duration noticeTimeout = Duration(seconds: 6);
+
 /// How far the arrow keys and the seek buttons move.
 const Duration seekStep = Duration(seconds: 30);
 
@@ -200,6 +206,9 @@ class PlaybackController extends ChangeNotifier {
   _Session? _session;
   Timer? _progressTimer;
   Timer? _chromeTimer;
+
+  /// Clears a non-fatal mpv message again. See the error listener.
+  Timer? _noticeTimer;
   final List<StreamSubscription<Object?>> _playerSubscriptions = [];
   bool _ac3FilterApplied = false;
   bool _mpvConfigured = false;
@@ -371,6 +380,9 @@ class PlaybackController extends ChangeNotifier {
         report: true,
       );
     } catch (cause) {
+      // Logged as well as shown: the message the viewer reads is deliberately
+      // short, and the cause is what actually says what went wrong.
+      if (kDebugMode) debugPrint('playback start failed: $cause');
       _error = cause is JellyfinException
           ? cause.message
           : 'Playback failed: $cause';
@@ -398,6 +410,7 @@ class PlaybackController extends ChangeNotifier {
     _siblingIndex = -1;
     _switching = false;
     _chromeTimer?.cancel();
+    _noticeTimer?.cancel();
     notifyListeners();
   }
 
@@ -592,8 +605,31 @@ class PlaybackController extends ChangeNotifier {
         }
       }),
       _player.stream.error.listen((message) {
+        // **mpv's error stream is not a stream of fatal errors.** It carries any
+        // libmpv log line at error level — a sideloaded subtitle that would not
+        // fetch, a filter that would not initialise, a codec probe that failed
+        // and was retried. Calling stop() on all of them meant that turning on
+        // a subtitle could end the film, which reads exactly like a crash.
+        //
+        // So: only give up when there is nothing playing to protect. If a
+        // session is up and the film is past loading, whatever mpv complained
+        // about was survivable — say so and carry on.
+        if (kDebugMode) debugPrint('mpv error: $message');
         _error = message;
-        unawaited(stop());
+
+        if (_session == null || _loading) {
+          unawaited(stop());
+          return;
+        }
+
+        // Shown, then cleared: a permanent red line over a film that is playing
+        // perfectly well is its own bug.
+        notifyListeners();
+        _noticeTimer?.cancel();
+        _noticeTimer = Timer(noticeTimeout, () {
+          _error = null;
+          notifyListeners();
+        });
       }),
     ]);
   }
@@ -781,6 +817,7 @@ class PlaybackController extends ChangeNotifier {
         report: false,
       );
     } catch (cause) {
+      if (kDebugMode) debugPrint('track change reload failed: $cause');
       _error = cause is JellyfinException
           ? cause.message
           : 'Could not change track: $cause';
@@ -910,6 +947,7 @@ class PlaybackController extends ChangeNotifier {
   @override
   void dispose() {
     _chromeTimer?.cancel();
+    _noticeTimer?.cancel();
     _progressTimer?.cancel();
     for (final subscription in _playerSubscriptions) {
       unawaited(subscription.cancel());
