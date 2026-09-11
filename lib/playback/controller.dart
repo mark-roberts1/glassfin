@@ -32,6 +32,7 @@ import '../settings/preferences.dart';
 import '../settings/subtitle_appearance.dart';
 import '../settings/video_settings.dart';
 import 'mpv_config.dart';
+import 'screen_keeper.dart';
 
 /// How often to tell the server where we are. Jellyfin's own clients use ten
 /// seconds, and matching them keeps a shared resume point consistent.
@@ -114,12 +115,14 @@ class PlaybackController extends ChangeNotifier {
     required AudioSettings audio,
     required SubtitleAppearance subtitles,
     Player? player,
+    ScreenKeeper? screen,
   }) : _client = client,
        _preferences = preferences,
        _video = video,
        _audio = audio,
        _subtitles = subtitles,
-       _player = player ?? Player();
+       _player = player ?? Player(),
+       _screen = screen ?? ScreenKeeper();
 
   Jellyfin _client;
   Preferences _preferences;
@@ -127,6 +130,10 @@ class PlaybackController extends ChangeNotifier {
   AudioSettings _audio;
   SubtitleAppearance _subtitles;
   final Player _player;
+
+  /// Holds the screensaver off while a film actually runs. See
+  /// [notifyListeners], which is where it is driven from.
+  final ScreenKeeper _screen;
 
   Player get player => _player;
 
@@ -1101,7 +1108,29 @@ class PlaybackController extends ChangeNotifier {
   }
 
   @override
+  /// Every change to this object's state passes through here, which is exactly
+  /// what the screensaver wiring wants.
+  ///
+  /// **Driven from the notification rather than from `start`/`stop`/`pause`.**
+  /// There are a dozen places that change whether a film is running — stopping,
+  /// an error, the end of the last episode, a track switch that reloads — and
+  /// pairing an inhibit with a release at each of them is the kind of bookkeeping
+  /// that is wrong within a month. [ScreenKeeper.wanted] is idempotent, so asking
+  /// on every notification costs a bool comparison and can never fall out of step
+  /// with the state it is derived from.
+  @override
+  void notifyListeners() {
+    // Playing *and not paused*, which is the condition the Qt build used. A
+    // paused film is someone who has walked away.
+    _screen.wanted(isPlaying && !_paused);
+    super.notifyListeners();
+  }
+
+  @override
   void dispose() {
+    // Before the player, because a held inhibit outliving the application is the
+    // one failure here that the viewer would have to fix by logging out.
+    _screen.wanted(false);
     _chromeTimer?.cancel();
     _noticeTimer?.cancel();
     _progressTimer?.cancel();
