@@ -80,7 +80,7 @@ lib/
   nav/                 spatial focus traversal policy         → docs/ui-spec.md §5
   jellyfin/            API client, models, device profile     → docs/native-audit.md §1
   playback/            mpv configuration and orchestration    → docs/native-audit.md §2
-  input/               mapping engine, gamepad, CEC client    → docs/native-audit.md §4
+  input/               mapping engine, gamepad, CEC client    → docs/native-audit.md §3
   settings/            preferences, persistence
   components/          Card, Row, ScreenHeader, Logo, Keyboard, Player, PlaybackMenu
   screens/             Home, Search, Library, Detail, Settings, Login
@@ -249,7 +249,33 @@ into the same controller a physical keyboard does, so a DualShock's keypad can b
 Its shift is **sticky**, not momentary.
 
 Generate the same canonical strings (`"Ctrl+Shift+F"`) that `assets/inputmaps/keyboard.json`
-already expects, so that file works unchanged.
+already expects, so that file works unchanged. `canonicalKeyName` in `lib/input/keyboard.dart` is
+where that happens, and it is fussier than it looks: the file is written in **Qt's** vocabulary, so
+`Left` not `Arrow Left`, `Esc` not `Escape`, `PgUp` not `Page Up`, `Space` is a *named key* rather
+than the character it produces, and modifiers come in Qt's order — **Meta, Ctrl, Alt, Shift**. Any
+other order produces a string that matches nothing and a shortcut that silently stops working.
+
+## The input maps are a contract
+
+`assets/inputmaps/*.json` came over from the Qt build byte for byte and keep working unchanged.
+Everything that reads them is in `lib/input/`: `input_map.dart` (what a key means),
+`pipeline.dart` (when it fires — the short/long split and autorepeat), `engine.dart` (binding the
+two to the router), `gamepad.dart` (SDL2 by FFI).
+
+Three consequences worth knowing before editing any of it:
+
+- **A key can mean several things at once.** Every pattern that matches contributes, so `P` yields
+  both `"P"` and `"play_pause"`. That is the design, not a bug to deduplicate — a text field takes
+  the character and leaves the action unused, and with no field open the action runs.
+- **An action name with no case in `InputAction.fromId` is normal.** The files address a superset of
+  what any one client does; the Qt interface handled about twenty names and dropped the rest. Add a
+  name when there is something for it to do.
+- **The tuned constants are tuned**: long press 500ms, autorepeat 650ms then 60ms, SDL axis
+  hysteresis 16384 on / 10000 off. The two axis thresholds are not redundant — one threshold makes a
+  resting thumbstick chatter.
+
+`docs/native-audit.md` §3 lists the five places the engine deliberately diverges from the original,
+and why each original behaviour was an accident rather than a decision.
 
 ## Build and test
 

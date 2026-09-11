@@ -209,6 +209,10 @@ media_kit has an analogous lazy init, expect the same class of bug.
 
 ## 3. The input stack
 
+> **Ported in Phase 6.** This section still describes the Qt build, which is what it is for. Five
+> things the Dart port does *differently* are listed under "Deliberate divergences" at the end of
+> the section — read those before concluding the code contradicts this document.
+
 ### Architecture
 
 Every backend emits one signal — `(source, keycode, keystate)` — into a single funnel that maps
@@ -265,6 +269,38 @@ overlay them, with a filesystem watcher for hot reload — edit a JSON, remap yo
 Actions prefixed `host:` never reach the UI layer; they dispatch to registered native commands:
 `fullscreen`, `switch` (display mode), `cycle_setting` / `set_setting`, `poweroff` / `reboot` /
 `suspend`, `player` (raw mpv command), plus debug hooks.
+
+### Deliberate divergences in the Dart port
+
+The mapping **files** are unchanged — that is the contract, and `test/input/bundled_maps_test.dart`
+holds it by reading the real `assets/inputmaps/` off disk. The **engine** differs in five places,
+each because the original behaviour was a bug or an accident rather than a decision.
+
+| | Qt build | Dart port | Why |
+| --- | --- | --- | --- |
+| Mapping identity | keyed on the `name` field | keyed on the **file name** | Three bundled files are all called "Xbox Controller" with different `idmatcher`s and *different axis layouts*. Keyed on the shared name they overwrite each other, so a Linux pad silently got the Windows layout. |
+| `"KEY_BUTTON_8": ""` | an action named `""` | unbound, no action | Fired nothing, but did start the 60ms autorepeat timer for as long as an unbound button was held. |
+| Synthetic autorepeat | ran for every source, keyboard included | **pad and remote only** | The OS already repeats a held key at the rate its owner chose. The original only avoided doubling it because Qt's repeat arrived faster than the 650ms delay and kept resetting the timer — a coincidence of two unrelated numbers. |
+| Axis / hat state | keyed on axis number alone | keyed on `(joystick, axis)` | Two pads shared one state. |
+| Match cache | hits only | hits and misses | Every unmapped key re-walked the whole pattern list. The list is immutable after load, so a negative cannot go stale. |
+
+Two things in the original that look like divergences and are not. `cycle_subtitle` is a typo for
+`cycle_subtitles` on the Xbox map's Y button — but that file defines `KEY_BUTTON_3` twice and the
+second definition (`search`) wins in both JSON parsers, so the typo is unreachable and is left
+exactly as it was. And `dualshock4-xbox-emulate.json` has its `idmatcher` line **commented out** on
+purpose: a DS4 in Windows mode is indistinguishable from an Xbox pad, so its header tells you to
+uncomment the line yourself. A map with no `idmatcher` is disabled, not broken, and must not warn.
+
+**What SDL actually reports matters more than the file names suggest.** A DualShock 4 paired over
+Bluetooth is `Wireless Controller` to the kernel but **`PS4 Controller` to SDL**, so
+`dualshock4-usb.json` is the map that applies — and that is correct, because its button numbering is
+the one SDL reports. Verified on hardware: X is `KEY_BUTTON_0`, Circle is `KEY_BUTTON_1`, the D-pad
+is a hat, and the sticks are axes 0/1 and 3. When a pad does nothing, the name SDL gives it is the
+first thing to check; it is logged on connect for that reason.
+
+Still not ported, and tracked as Phase 7: **HDMI-CEC** and **LIRC**. The local socket that was the
+natural bridge for both is also absent. `host:` actions are down to `fullscreen`, `minimize` and
+`quit`/`close` — every other one addressed a subsystem this rebuild deleted.
 
 ---
 
