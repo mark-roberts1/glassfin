@@ -1,0 +1,182 @@
+# Flatpak manifest for Glassfin.
+#
+# Target: Bazzite, sideloaded and launched from Steam Big Picture as a non-Steam
+# shortcut. See linux/packaging/build-flatpak.sh for the two commands that use
+# this file.
+#
+# **This builds the Flutter application outside the sandbox and copies the result
+# in**, rather than building it from source inside. That is deliberate, and it is
+# the one thing here that would have to change to publish on Flathub, which
+# requires a from-source build with no network access. Vendoring the Flutter SDK
+# into a manifest to satisfy that is a large amount of machinery for a private
+# appliance build, and the compatibility question it would answer turns out not to
+# be a question: the Flutter toolchain targets an old glibc baseline on purpose, so
+# a binary built on Arch (glibc 2.43) needs nothing newer than GLIBC_2.34 and runs
+# against this runtime's 2.42 with no C++ ABI requirements at all. That was
+# measured, not assumed.
+#
+# What *is* built here is libmpv, because media_kit is libmpv and the Flutter
+# binary links `libmpv.so.2` directly — a runtime without it fails to start, not
+# to play. Three modules get there: libass, libplacebo, mpv.
+#
+# The runtime's own ffmpeg is enough, which is worth recording because it used not
+# to be. H.264, HEVC, AAC, AC-3, DTS, TrueHD, VP9, AV1 and VC-1 are all present in
+# org.gnome.Platform 49, so the `org.freedesktop.Platform.ffmpeg-full` extension
+# that every older media manifest carries is not needed and is not declared. GNOME
+# 49 does not even offer the extension point any more.
+id: org.glassfin.Glassfin
+runtime: org.gnome.Platform
+runtime-version: '49'
+sdk: org.gnome.Sdk
+command: glassfin
+
+finish-args:
+  # Wayland first, X11 as a fallback. Bazzite is Wayland.
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --share=ipc
+
+  # The GPU, for Impeller and for mpv's hardware decoding.
+  - --device=dri
+
+  # **Gamepads.** Without this SDL finds no joysticks at all and the whole input
+  # layer silently falls back to being keyboard-only — which on a television is
+  # indistinguishable from the application being broken. It grants /dev/input.
+  - --device=input
+
+  - --socket=pulseaudio
+  - --share=network
+
+  # Keeping the screen awake during a film, which wakelock_plus does over D-Bus
+  # rather than through a portal.
+  - --talk-name=org.freedesktop.ScreenSaver
+  - --talk-name=org.gnome.SessionManager
+
+cleanup:
+  - /include
+  - /lib/pkgconfig
+  - /lib/cmake
+  - /share/man
+  - /share/doc
+  - '*.a'
+  - '*.la'
+
+modules:
+  # Subtitle rendering. libass is what draws every subtitle in the application,
+  # and the appearance settings in docs/native-audit.md §3 are its parameters.
+  - name: libass
+    buildsystem: meson
+    config-opts:
+      - -Ddefault_library=shared
+    sources:
+      - type: git
+        url: https://github.com/libass/libass.git
+        tag: '0.17.5'
+
+  # Mandatory for mpv since 0.37 — it is the renderer behind `vo=gpu-next`.
+  # Cloned rather than fetched as a tarball because glad is a submodule.
+  #
+  # Vulkan, shaderc and lcms are left to auto-detection rather than hard-enabled:
+  # all three are in the runtime, and a missing *optional* dependency should not
+  # fail a build for a feature this application does not reach for.
+  - name: libplacebo
+    buildsystem: meson
+    config-opts:
+      - -Ddefault_library=shared
+      - -Ddemos=false
+      - -Dtests=false
+    sources:
+      - type: git
+        url: https://code.videolan.org/videolan/libplacebo.git
+        tag: v7.360.1
+
+  # libmpv only — no player binary, no manual, no scripting.
+  #
+  # The enabled options are the ones this application actually depends on, and
+  # they are hard-enabled rather than left on auto **so that a missing dependency
+  # is a loud build failure instead of a quiet loss of capability.** Silently
+  # losing vaapi would mean software-decoding 4K on a living-room box, and the
+  # place to find that out is here, not on the sofa.
+  #
+  # The disabled list is everything mpv offers that a Jellyfin client never
+  # touches. sdl2-gamepad included: Glassfin reads the pad itself through SDL and
+  # mpv is not given the input to begin with.
+  - name: mpv
+    buildsystem: meson
+    config-opts:
+      - -Dlibmpv=true
+      - -Dcplayer=false
+      - -Dgl=enabled
+      - -Degl=enabled
+      - -Dwayland=enabled
+      - -Dx11=enabled
+      - -Dvaapi=enabled
+      - -Dpulse=enabled
+      - -Dpipewire=enabled
+      - -Dalsa=enabled
+      - -Dlcms2=enabled
+      - -Dmanpage-build=disabled
+      - -Dhtml-build=disabled
+      - -Dpdf-build=disabled
+      - -Dtests=false
+      - -Dlua=disabled
+      - -Djavascript=disabled
+      - -Duchardet=disabled
+      - -Dzimg=disabled
+      - -Dvapoursynth=disabled
+      - -Dlibbluray=disabled
+      - -Dcdda=disabled
+      - -Ddvdnav=disabled
+      - -Ddvbin=disabled
+      - -Drubberband=disabled
+      - -Dsdl2-gamepad=disabled
+      - -Dsdl2-audio=disabled
+      - -Dsdl2-video=disabled
+    sources:
+      - type: git
+        url: https://github.com/mpv-player/mpv.git
+        tag: v0.41.0
+
+  # The application itself, prebuilt. build-flatpak.sh runs `flutter build linux
+  # --release` first; this module only moves the result into place.
+  - name: glassfin
+    buildsystem: simple
+    build-commands:
+      - install -d /app/glassfin
+      - cp -r bundle/. /app/glassfin/
+      - install -Dm755 glassfin-launcher.sh /app/bin/glassfin
+      - install -Dm644 org.glassfin.Glassfin.desktop
+        /app/share/applications/org.glassfin.Glassfin.desktop
+      - install -Dm644 org.glassfin.Glassfin.appdata.xml
+        /app/share/metainfo/org.glassfin.Glassfin.metainfo.xml
+      - install -Dm644 icon.svg
+        /app/share/icons/hicolor/scalable/apps/org.glassfin.Glassfin.svg
+      - install -Dm644 icon.png
+        /app/share/icons/hicolor/512x512/apps/org.glassfin.Glassfin.png
+    sources:
+      - type: dir
+        path: ../../build/linux/x64/release/bundle
+        dest: bundle
+
+      - type: file
+        path: org.glassfin.Glassfin.desktop
+      - type: file
+        path: org.glassfin.Glassfin.appdata.xml
+      - type: file
+        path: ../../assets/images/icon.svg
+      - type: file
+        path: ../../assets/images/icon.png
+
+      # A script rather than a symlink into /app/glassfin, so there is somewhere
+      # obvious to put environment that has to be set before the binary starts.
+      #
+      # LD_LIBRARY_PATH is the load-bearing line: the Flutter bundle's RPATH is
+      # `$ORIGIN/lib`, which finds the plugins beside the binary but not the
+      # libmpv built by the module above, which lands in /app/lib. Flatpak
+      # usually sets this itself — stated here anyway, because "usually" is not a
+      # good reason for an application to fail to start.
+      - type: script
+        dest-filename: glassfin-launcher.sh
+        commands:
+          - export LD_LIBRARY_PATH="/app/lib:${LD_LIBRARY_PATH}"
+          - exec /app/glassfin/glassfin "$@"
