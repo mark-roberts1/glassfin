@@ -505,6 +505,14 @@ Sections:
    than Glassfin's. They apply to every video, and survive a restart." Size, colour, outline,
    background, placement.
 5. **Account** — a static "Signed in" row, a `danger`-coloured Sign out, and Reset preferences.
+6. **Developer** — **debug builds only, and not in the Qt original.** One row, "Force transcoding"
+   (`Off — direct play when possible` / `On — re-encode everything`), worded as what it does to the
+   server rather than On/Off, because "On" under that name leaves you guessing which way round it
+   is. It exists because the direct-play and transcode paths share almost no code (§ the
+   `DeliveryMethod` table in CLAUDE.md) and a library may contain nothing that transcodes on its
+   own, so the transcode half would otherwise be untestable. Note: "Not built into release. Takes
+   effect on the next thing you play, not the film already running — the device profile is sent
+   with each playback request."
 
 Rows: full width, `raised` on `1px edge`, `radius`, `padding: .85rem 1.1rem`, name left and value
 right in `ink-dim`, baseline-aligned. Focus is **ring only, no scale**. Sections `max-width: 900px`.
