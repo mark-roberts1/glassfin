@@ -22,6 +22,7 @@ import '../jellyfin/media_badges.dart';
 import '../jellyfin/models.dart';
 import '../nav/registry.dart';
 import '../playback/controller.dart';
+import 'playback_menu.dart' show trackLabel;
 import '../settings/video_settings.dart';
 
 const String playerSettingsGroup = 'player-settings';
@@ -238,11 +239,9 @@ class _PlaybackInfo extends StatelessWidget {
     return null;
   }
 
-  static String _describe(MediaStream stream) {
-    final title = stream.displayTitle;
-    if (title != null && title.isNotEmpty) return title;
-    return stream.codec?.toUpperCase() ?? 'Unknown';
-  }
+  /// The same label the track menu uses, rather than a second implementation of
+  /// it — the two had drifted, and this one still showed "English - ASS".
+  static String _describe(MediaStream stream) => trackLabel(stream);
 
   Widget _fact(String name, String value) => Padding(
     padding: EdgeInsets.only(bottom: Metrics.rem(0.3)),

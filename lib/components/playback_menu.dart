@@ -139,20 +139,81 @@ class _PlaybackMenuState extends State<PlaybackMenu> {
   }
 }
 
+/// Subtitle formats, as they turn up at the end of Jellyfin's `DisplayTitle`.
+///
+/// Includes the names Jellyfin reports as the `Codec` and the aliases it prints
+/// instead, which are not always the same string.
+const Set<String> _subtitleFormats = {
+  'ASS',
+  'SSA',
+  'SRT',
+  'SUBRIP',
+  'VTT',
+  'WEBVTT',
+  'PGS',
+  'PGSSUB',
+  'DVDSUB',
+  'DVBSUB',
+  'DVB_SUBTITLE',
+  'DVD_SUBTITLE',
+  'HDMV_PGS_SUBTITLE',
+  'MOV_TEXT',
+  'TTML',
+  'SAMI',
+  'MICRODVD',
+  'TEXT',
+  'SUB',
+  'IDX',
+};
+
 /// **The server's own `DisplayTitle` is usually the best label** — "English -
 /// AAC - 5.1" says more than anything assembled here, and it is what the viewer
 /// will see in every other Jellyfin client. The fallback is for streams that
 /// carry none.
+///
+/// With one correction. Jellyfin appends the format to a subtitle's title, so
+/// tracks arrive as "English - ASS", and **the viewer is not the audience for
+/// that.** For audio the codec earns its place: AAC against TrueHD is a real
+/// choice about what your amplifier will do. For subtitles it is the name of a
+/// text container, it is the same for nearly every track on offer, and "ASS" in
+/// particular is an unfortunate thing to put on a television in a room with other
+/// people in it. Stripped for subtitles only.
 String trackLabel(MediaStream stream) {
   final title = stream.displayTitle;
-  if (title != null && title.isNotEmpty) return title;
+  if (title != null && title.isNotEmpty) {
+    return stream.type == StreamType.subtitle
+        ? _withoutFormat(title, stream.codec)
+        : title;
+  }
 
   final language = stream.language;
   final codec = stream.codec;
   return [
     language == null || language.isEmpty ? 'Unknown' : languageName(language),
-    if (codec != null && codec.isNotEmpty) codec.toUpperCase(),
+    if (codec != null &&
+        codec.isNotEmpty &&
+        stream.type != StreamType.subtitle)
+      codec.toUpperCase(),
   ].join(' · ');
+}
+
+/// Drops a trailing " - FORMAT" from [title].
+///
+/// Matched against the stream's own reported codec *and* a list of known format
+/// names, because the two disagree often enough to matter — a PGS track reports
+/// `PGSSUB` and may be titled either way round. A title that is *only* the format
+/// is left alone: "PGS" is a poor label but a blank one is worse.
+String _withoutFormat(String title, String? codec) {
+  const separator = ' - ';
+  final cut = title.lastIndexOf(separator);
+  if (cut <= 0) return title;
+
+  final tail = title.substring(cut + separator.length).trim().toUpperCase();
+  final known =
+      _subtitleFormats.contains(tail) ||
+      (codec != null && codec.isNotEmpty && tail == codec.toUpperCase());
+
+  return known ? title.substring(0, cut).trimRight() : title;
 }
 
 List<String> trackBadges(MediaStream stream) => [
