@@ -165,6 +165,8 @@ class _GlassfinAppState extends State<GlassfinApp> with WidgetsBindingObserver {
     // A deep stack full of another account's items should not be waiting after
     // the next sign-in.
     NavRegistry.instance.clear();
+    _wasPlaying = false;
+    _focusBeforePlayback = null;
     setState(() {
       _client = null;
       _playback = null;
@@ -183,8 +185,77 @@ class _GlassfinAppState extends State<GlassfinApp> with WidgetsBindingObserver {
       _menuOpen = false;
       _settingsOpen = false;
     }
+
+    // Starting and stopping, picked out of the stream of position updates that
+    // arrive between them.
+    final started = playing && !_wasPlaying;
+    final ended = !playing && _wasPlaying;
+    _wasPlaying = playing;
+
+    // Before the rebuild, because this is the last moment at which the card the
+    // viewer pressed Play on is still the focused node.
+    if (started) _noteFocusBeforePlayback();
+
     setState(() {});
-    if (playing) _keepFocusInTransport();
+
+    if (playing) {
+      _keepFocusInTransport();
+    } else if (ended) {
+      _returnFocusAfterPlayback();
+    }
+  }
+
+  /// Whether the previous notification had a film up. See [_onPlaybackChanged].
+  bool _wasPlaying = false;
+
+  /// What had focus when the film started, so that stopping it puts the viewer
+  /// back where they were rather than somewhere merely plausible.
+  FocusNode? _focusBeforePlayback;
+
+  static const Set<String?> _playerGroups = {
+    transportGroup,
+    transportTopGroup,
+    transportScrubGroup,
+    skipGroup,
+  };
+
+  void _noteFocusBeforePlayback() {
+    final focused = FocusManager.instance.primaryFocus;
+    if (focused == null) return;
+    final info = NavRegistry.instance.infoFor(focused);
+    // Anything in the player's own groups is ignored, so that the
+    // episode-to-episode handover — which stops one session and starts the next
+    // — cannot overwrite the card with a transport button.
+    if (info == null || _playerGroups.contains(info.group)) return;
+    _focusBeforePlayback = focused;
+  }
+
+  /// Back to the card the film was started from.
+  ///
+  /// **After the frame, and it has to be.** A hidden [Visibility] wraps its child
+  /// in an `ExcludeFocus`, so for as long as the film is up not one node on the
+  /// screen behind it can take focus — the card is only reachable again once the
+  /// rebuild that reveals the screen has happened.
+  ///
+  /// That ordering is also why [NavRegistry.restoreFocusTo] records its intent
+  /// synchronously: the player's focusables unregister during this same frame and
+  /// schedule a recovery of their own, which would otherwise reach a verdict
+  /// before this request had been applied and overrule it.
+  void _returnFocusAfterPlayback() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // **A film may already be playing again.** Moving to the next episode is a
+      // stop followed by a start, so this runs with the transport back up and
+      // owning focus; touching it then would be wrong twice over, since the
+      // screen behind is hidden and cannot take focus anyway.
+      if (_playback?.isPlaying ?? false) return;
+
+      if (NavRegistry.instance.restoreFocusTo(_focusBeforePlayback)) return;
+
+      // The card may genuinely be gone: a different library was opened, or the
+      // screen rebuilt while the film played. Anything on screen beats nothing.
+      _focusBeforePlayback = null;
+      NavRegistry.instance.focusSomethingSensible();
+    });
   }
 
   /// When the chrome appears, focus lands on the scrubber.
@@ -202,13 +273,7 @@ class _GlassfinAppState extends State<GlassfinApp> with WidgetsBindingObserver {
     final group = focused == null
         ? null
         : NavRegistry.instance.infoFor(focused)?.group;
-    const inPlayer = {
-      transportGroup,
-      transportTopGroup,
-      transportScrubGroup,
-      skipGroup,
-    };
-    if (group != null && inPlayer.contains(group)) return;
+    if (group != null && _playerGroups.contains(group)) return;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       NavRegistry.instance.focusGroup(transportScrubGroup);
@@ -338,9 +403,13 @@ class _GlassfinAppState extends State<GlassfinApp> with WidgetsBindingObserver {
   /// After anything closes, something must hold focus again — an interface with
   /// nothing highlighted is a dead end, and dead ends are the specific failure
   /// the couch bar exists to prevent.
+  ///
+  /// The test is [NavRegistry.hasRealFocus] rather than "is there a focused node
+  /// with a context". That older question was always answered yes: focus falls
+  /// back to the enclosing scope, which has a context, so this never once fired.
   void _restoreFocus() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (FocusManager.instance.primaryFocus?.context == null) {
+      if (!NavRegistry.instance.hasRealFocus) {
         NavRegistry.instance.focusSomethingSensible();
       }
     });
@@ -482,15 +551,43 @@ class _GlassfinAppState extends State<GlassfinApp> with WidgetsBindingObserver {
             visible: !playing && !_routes.isDetail,
           ),
 
-          // **Hidden, never unmounted.** Scroll position and focus survive a
-          // film, which is the whole reason the player is a layer rather than a
-          // route.
+          // **Hidden, never unmounted.** Scroll position and loaded content
+          // survive a film, which is the whole reason the player is a layer
+          // rather than a route.
+          //
+          // What does *not* survive is focusability: a hidden Visibility wraps
+          // its child in an `ExcludeFocus` regardless of `maintainInteractivity`,
+          // which only governs pointer events. That is the behaviour we want —
+          // nothing behind the film should be reachable while it plays — but it
+          // means returning the viewer to their card afterwards is an explicit
+          // act, and one that has to wait for this to become visible again. See
+          // [_returnFocusAfterPlayback].
           Visibility(
             visible: !playing,
             maintainState: true,
             maintainAnimation: true,
             maintainSize: true,
             maintainInteractivity: true,
+
+            // **Not cosmetic, and not about accessibility.** A [Visibility] that
+            // drops its subtree's semantics and then brings it back trips a
+            // framework assertion — `!semantics.parentDataDirty`, in
+            // `RenderObject.debugCheckForParentData` — on the frame it becomes
+            // visible again. That assertion throws from inside `drawFrame`,
+            // *before* `BuildOwner.finalizeTree()`, so the frame that should have
+            // unmounted the player never does: its elements stay inactive but
+            // present, their focus nodes keep primary focus, and the traversal
+            // policy then throws on every direction press for the rest of the
+            // session. Ending a film left the controller dead.
+            //
+            // Keeping semantics alive avoids the path entirely. The cost is that
+            // the hidden screen stays in the semantics tree during a film, which
+            // on a television with no screen reader is nothing at all.
+            //
+            // Reduced to a two-widget case in `test/nav/focus_recovery_test.dart`:
+            // a Visibility going hidden is fine, coming back is not, and
+            // `maintainSize` is irrelevant to it.
+            maintainSemantics: true,
             child: _screen(client, playback),
           ),
 

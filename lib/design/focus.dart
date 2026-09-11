@@ -162,7 +162,10 @@ class _FocusableState extends State<Focusable> {
   void _onFocusChange(bool focused) {
     setState(() => _focused = focused);
     if (focused) {
-      NavRegistry.instance.remember(_node);
+      // Group memory *and* "this is where the viewer is", which is what lets the
+      // registry recover focus when this element is torn down — by then the node
+      // itself no longer reports holding it.
+      NavRegistry.instance.noteFocused(_node);
       widget.onFocus?.call();
     }
   }

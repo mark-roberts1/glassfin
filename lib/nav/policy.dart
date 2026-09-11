@@ -51,6 +51,17 @@ class GlassfinTraversalPolicy extends FocusTraversalPolicy {
 
   @override
   bool inDirection(FocusNode currentNode, TraversalDirection direction) {
+    // **Not every node that holds focus is a place to move away from.** When the
+    // focused element is torn down, focus lands on the enclosing scope — which
+    // reports the whole screen as its rectangle, so every candidate scores as
+    // lying *behind* the origin and the move finds nothing. Pressing a direction
+    // then did nothing, for ever, and the only way back into the interface was a
+    // mouse click. Recovering instead is what makes that self-healing on the very
+    // next press. See [NavRegistry.isOurs].
+    if (!_registry.isOurs(currentNode)) {
+      return _registry.focusSomethingSensible();
+    }
+
     final origin = _rectOf(currentNode);
     if (origin == null) {
       return _registry.focusSomethingSensible();
@@ -134,11 +145,18 @@ class GlassfinTraversalPolicy extends FocusTraversalPolicy {
 
   /// A node's global rectangle, or `null` if it has no position to report.
   ///
-  /// **The `mounted` check is load-bearing, not defensive.** A focus node can
-  /// outlive its element by a few milliseconds — the element is deactivated and
-  /// unmounted at the end of a frame, and the node leaves the scope's descendants
-  /// after that. `findRenderObject()` on an inactive element does not return null,
-  /// it *throws*, so the guards below never got the chance to.
+  /// **The guard here has to be a `try`, and that is not laziness.** A focus node
+  /// can outlive its element: the element is deactivated during a frame and
+  /// unmounted at the end of it, and in between it is *inactive*, where
+  /// `findRenderObject()` does not return null but asserts. The obvious guard —
+  /// `context.mounted` — does not separate the two cases, because
+  /// `Element.mounted` is `_widget != null`, which an inactive element still
+  /// satisfies. So the check that used to be written here looked like it closed
+  /// the window and did not.
+  ///
+  /// In a release build the assertion is absent and the detached render object is
+  /// caught by `attached` below, which is why this only ever showed up in
+  /// development — as an exception escaping the gamepad poll timer.
   ///
   /// That window only began to matter in Phase 6. A key event is delivered during
   /// Flutter's input phase, when the tree is consistent; a gamepad arrives on a
@@ -148,7 +166,13 @@ class GlassfinTraversalPolicy extends FocusTraversalPolicy {
     final context = node.context;
     if (context == null || !context.mounted) return null;
 
-    final renderObject = context.findRenderObject();
+    final RenderObject? renderObject;
+    try {
+      renderObject = context.findRenderObject();
+    } on FlutterError {
+      return null;
+    }
+
     if (renderObject is! RenderBox ||
         !renderObject.attached ||
         !renderObject.hasSize) {

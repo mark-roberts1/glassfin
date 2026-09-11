@@ -404,6 +404,32 @@ When a focused element is destroyed, clear it and schedule "focus something sens
 microtask. An interface with nothing focused is a dead end, and dead ends are the specific failure
 the couch bar exists to prevent.
 
+**On Flutter this rule is much harder to hold than it reads**, and it was written as three
+different checks that were all inert. The DOM leaves `document.activeElement` on `<body>` and
+that is obviously nothing; Flutter instead hands focus to the nearest enclosing `Focus` or
+`FocusScopeNode`, which is a real node, with a real context, reporting the whole screen as its
+rectangle. So:
+
+- `primaryFocus == null` is never true;
+- `primaryFocus.context == null` is never true;
+- and the §2.2 scoring rejects **every** candidate, because from a full-screen origin everything
+  lies behind you in every direction. Pressing a direction then does nothing, for ever, and the
+  only way back in is a mouse click.
+
+The question to ask is *"is the focused node one of our registered focusables"* —
+`NavRegistry.isOurs` — and the answer has to gate both recovery and `inDirection`. Three further
+facts, each measured rather than reasoned about, in `test/nav/focus_recovery_test.dart`:
+
+- **A node has already lost focus by the time its `Focusable` disposes.** Flutter tears a `Focus`
+  down from the inside out, so `hasFocus` inside `unregister` is always false. The registry has to
+  track the focused node itself.
+- **`FocusNode.dispose()` never clears its context**, so "has a context" does not mean "is still
+  in the tree". `parent` does.
+- **A hidden `Visibility` focus-excludes its subtree** regardless of `maintainInteractivity`,
+  which governs only pointer events. Nothing behind a playing film can take focus — which is what
+  we want — so returning the viewer to where they were afterwards is an explicit act, and one that
+  must wait for the screen to be visible again.
+
 ### 2.6 Pointer vs pad mode
 
 Two modes, default **pad** (a TV with no mouse never shows a cursor). Pointer mode shows the
