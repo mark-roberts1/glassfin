@@ -9,6 +9,8 @@
 /// exactly one place.
 library;
 
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
@@ -19,6 +21,23 @@ import 'input_map.dart';
 import 'keyboard.dart';
 import 'pipeline.dart';
 import 'router.dart';
+
+/// Log every key code, mapped or not, in any build.
+///
+/// **Writing a mapping file requires knowing what the hardware calls its
+/// buttons, and only the running application can answer that** — the names and
+/// numbers depend on which SDL backend claimed the device, which in turn depends
+/// on what else is running. The same DualShock 4 is `PS4 Controller` with twelve
+/// buttons on its own, and `Wireless Controller` with thirteen and a different
+/// order once Steam has taken the hidraw device and SDL has fallen back to
+/// evdev. Neither is guessable, and a release build is exactly where you need to
+/// find out, because that is what Steam launches.
+///
+/// Off unless asked for:
+///
+///     flatpak run --env=GLASSFIN_LOG_INPUT=1 org.glassfin.Glassfin
+final bool logEveryCode =
+    Platform.environment['GLASSFIN_LOG_INPUT'] == '1';
 
 class InputEngine {
   InputEngine({
@@ -91,14 +110,16 @@ class InputEngine {
     KeyState state, {
     bool synthesiseRepeat = true,
   }) {
-    if (kDebugMode && state != KeyState.up) {
-      final actions = maps.lookUp(source, keycode);
-      if (actions.isEmpty) {
-        // The single most useful line when a button does nothing: it separates
-        // "the pad is not reporting" from "the pad is reporting something no map
-        // claims".
-        debugPrint('input: $source "$keycode" is unmapped');
-      }
+    if (logEveryCode) {
+      debugPrint('input: $source "$keycode" ${state.name}');
+    } else if (state != KeyState.up &&
+        maps.lookUp(source, keycode).isEmpty) {
+      // The single most useful line when a button does nothing: it separates
+      // "the pad is not reporting" from "the pad is reporting something no map
+      // claims". **Not debug-only** — a controller that does nothing is a
+      // release-build problem on somebody's television, and this costs one line
+      // per press that already did nothing.
+      debugPrint('input: $source "$keycode" is unmapped');
     }
     _pipeline.receive(source, keycode, state, synthesiseRepeat: synthesiseRepeat);
   }

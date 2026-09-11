@@ -39,6 +39,36 @@ List<String> _actions(InputMaps maps, String source, String key) => [
     if (mapped is MappedActions) ...mapped.actions,
 ];
 
+/// Whether *some* button on [source] produces [action], whatever its number.
+///
+/// Sweeps the button and axis codes a pad can emit, because the question worth
+/// asking about two maps for one controller is "does mute still exist", not
+/// "is mute still on button three".
+bool _reachable(InputMaps maps, String source, String action) {
+  final codes = <String>[
+    for (var i = 0; i < 20; i++) 'KEY_BUTTON_$i',
+    for (var axis = 0; axis < 6; axis++) ...[
+      'KEY_AXIS_${axis}_UP',
+      'KEY_AXIS_${axis}_DOWN',
+    ],
+    'KEY_HAT_UP',
+    'KEY_HAT_DOWN',
+    'KEY_HAT_LEFT',
+    'KEY_HAT_RIGHT',
+  ];
+
+  for (final code in codes) {
+    for (final mapped in maps.lookUp(source, code)) {
+      final names = switch (mapped) {
+        MappedActions(:final actions) => actions,
+        MappedHold(:final short, :final long) => [?short, ?long],
+      };
+      if (names.contains(action)) return true;
+    }
+  }
+  return false;
+}
+
 void main() {
   late InputMaps maps;
 
@@ -162,10 +192,11 @@ void main() {
       expect(maps.lookUp('Xbox One', 'KEY_BUTTON_8'), isEmpty);
     });
 
-    test('a DualShock 4 over Bluetooth', () {
-      expect(_actions(maps, 'Wireless Controller', 'KEY_BUTTON_1'), ['enter']);
+    test('a DualShock under Steam can still navigate', () {
+      expect(_actions(maps, 'Wireless Controller', 'KEY_BUTTON_0'), ['enter']);
       expect(_actions(maps, 'Wireless Controller', 'KEY_HAT_LEFT'), ['left']);
       expect(_actions(maps, 'Wireless Controller', 'KEY_AXIS_1_DOWN'), ['down']);
+      expect(_actions(maps, 'Wireless Controller', 'KEY_AXIS_0_UP'), ['left']);
     });
 
     test('the DualShock 4 layout, as the owner asked for it', () {
@@ -189,18 +220,93 @@ void main() {
       });
     });
 
-    test('a DualShock 4 over USB, which renumbers every button', () {
-      // Same pad, same actions, different numbers: over USB the kernel reports X
-      // as button 0 where Bluetooth reports it as button 1. This is exactly why
-      // the two layouts are separate files matched on the reported name, and why
-      // `idmatcher` is the thing that has to keep working.
-      expect(_actions(maps, 'PS4 Controller', 'KEY_BUTTON_0'), ['enter']);
-      expect(_actions(maps, 'Wireless Controller', 'KEY_BUTTON_1'), ['enter']);
+    test('the same DualShock under Steam, which renumbers every button', () {
+      // **Launched from Steam the pad is a different device as far as SDL is
+      // concerned.** Steam takes the hidraw node, SDL falls back to evdev, and
+      // the kernel's name and button order arrive instead: "Wireless Controller",
+      // 13 buttons, face buttons *rotated* rather than shifted. Confirmed by
+      // pressing each one under Steam Input.
+      //
+      // The same layout has to come out the other side, which is the whole
+      // argument for a file per device presentation.
+      const expected = {
+        'KEY_BUTTON_0': 'enter', //           X
+        'KEY_BUTTON_2': 'menu', //            Triangle
+        'KEY_BUTTON_3': 'mute', //            Square
+        'KEY_BUTTON_4': 'rewind', //          L1
+        'KEY_BUTTON_5': 'fast_forward', //    R1
+        'KEY_BUTTON_6': 'decrease_volume', // L2
+        'KEY_BUTTON_7': 'increase_volume', // R2
+        'KEY_BUTTON_8': 'host:fullscreen', // Share
+        'KEY_BUTTON_9': 'play_pause', //      Options
+      };
 
+      expected.forEach((key, action) {
+        expect(
+          _actions(maps, 'Wireless Controller', key),
+          [action],
+          reason: key,
+        );
+      });
+
+      // Circle is the hold, and it is button 1 here and button 1 there — the one
+      // index the two orderings agree on.
       final hold =
-          maps.lookUp('PS4 Controller', 'KEY_BUTTON_1').single as MappedHold;
+          maps.lookUp('Wireless Controller', 'KEY_BUTTON_1').single
+              as MappedHold;
       expect(hold.short, 'back');
       expect(hold.long, 'home');
+    });
+
+    test('both DualShock presentations agree on what the buttons mean', () {
+      // The point of two files. Whatever SDL calls the pad, the same physical
+      // button does the same thing — so this compares *actions*, not indices.
+      const underSteam = 'Wireless Controller';
+      const onItsOwn = 'PS4 Controller';
+
+      for (final action in [
+        'enter',
+        'menu',
+        'mute',
+        'rewind',
+        'fast_forward',
+        'decrease_volume',
+        'increase_volume',
+        'host:fullscreen',
+        'play_pause',
+      ]) {
+        expect(
+          _reachable(maps, underSteam, action),
+          isTrue,
+          reason: '$action under Steam',
+        );
+        expect(
+          _reachable(maps, onItsOwn, action),
+          isTrue,
+          reason: '$action on its own',
+        );
+      }
+    });
+
+    test('Circle is the one index the two orderings agree on', () {
+      // Coincidence rather than design, and worth pinning precisely because it
+      // makes the two files look more alike than they are: X is 0 under evdev and
+      // 0 under hidapi too, but Square and Triangle swap around them.
+      for (final source in ['PS4 Controller', 'Wireless Controller']) {
+        final hold =
+            maps.lookUp(source, 'KEY_BUTTON_1').single as MappedHold;
+        expect(hold.short, 'back', reason: source);
+        expect(hold.long, 'home', reason: source);
+      }
+
+      // Buttons 2 and 3 are **swapped** between the two orderings — Square and
+      // Triangle trade places — so the same index means different things and the
+      // same button means the same thing. That is the swap that made X do nothing
+      // when one file was used for the other pad.
+      expect(_actions(maps, 'PS4 Controller', 'KEY_BUTTON_2'), ['mute']);
+      expect(_actions(maps, 'PS4 Controller', 'KEY_BUTTON_3'), ['menu']);
+      expect(_actions(maps, 'Wireless Controller', 'KEY_BUTTON_2'), ['menu']);
+      expect(_actions(maps, 'Wireless Controller', 'KEY_BUTTON_3'), ['mute']);
     });
   });
 

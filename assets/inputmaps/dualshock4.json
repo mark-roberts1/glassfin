@@ -1,65 +1,95 @@
+// A DualShock 4 as the *kernel* reports it, which is what SDL falls back to.
+//
+// **The file name says Bluetooth and that is not what decides it.** Which of the
+// two DualShock maps applies depends on which SDL backend claimed the device:
+//
+//   * On its own, SDL's hidapi driver takes the pad, calls it "PS4 Controller"
+//     and reports 12 buttons in SDL's normalised gamepad order. That is
+//     dualshock4-usb.json, over USB *and* Bluetooth alike.
+//
+//   * Launched from Steam, Steam grabs the hidraw device first. SDL drops to its
+//     evdev backend, which reports the kernel's name — "Wireless Controller" —
+//     and 13 buttons in the kernel's order. That is this file.
+//
+// The two orders are not the same and the difference is not a shift: the face
+// buttons are rotated. Confirmed on hardware, button by button, under Steam:
+//
+//   0 X   1 Circle   2 Triangle   3 Square
+//   4 L1  5 R1       6 L2         7 R2
+//   8 Share  9 Options  10 PS  11 L3  12 R3
+//
+// and the axes are 0/1 left stick, 3/4 right stick, 2 and 5 the analogue
+// triggers. Note the right stick is 3/4 here where hidapi puts it on 2/3.
+//
+// **There is no touchpad button in this ordering**, so Search has nowhere to
+// live on the pad under Steam. It is still on the touchpad in the other file.
 {
   "name": "Playstation Dual Shock 4",
   "idmatcher": "Wireless Controller",
   "mapping": {
     // D-Pad
-    "KEY_HAT_DOWN": "down",
     "KEY_HAT_UP": "up",
-    "KEY_HAT_RIGHT": "right",
+    "KEY_HAT_DOWN": "down",
     "KEY_HAT_LEFT": "left",
+    "KEY_HAT_RIGHT": "right",
 
-    // Square
-    "KEY_BUTTON_0": "cycle_audio",
+    // X — select
+    "KEY_BUTTON_0": "enter",
 
-    // X
-    "KEY_BUTTON_1": "enter",
-
-    // Circle
-    "KEY_BUTTON_2": {
+    // Circle — back, or home if you hold it
+    "KEY_BUTTON_1": {
       "short": "back",
       "long": "home"
     },
 
-    // Triangle
-    "KEY_BUTTON_3": "cycle_subtitles",
+    // Triangle — the audio and subtitle menu
+    "KEY_BUTTON_2": "menu",
 
-    // L1
-    "KEY_BUTTON_4": "seek_backward",
+    // Square — mute
+    "KEY_BUTTON_3": "mute",
 
-    // L2
-    "KEY_BUTTON_5": "seek_forward",
+    // L1 / R1 — scan back and forward. Each press doubles the speed.
+    "KEY_BUTTON_4": "rewind",
+    "KEY_BUTTON_5": "fast_forward",
 
-    // option
-    "KEY_BUTTON_8": "host:toggleDebug",
+    // L2 / R2 — volume, which ramps while held.
+    //
+    // Bound as buttons rather than as axes 2 and 5. evdev reports these triggers
+    // both ways at once, and the digital form is the one that autorepeats
+    // cleanly; taking both would move the volume twice per press.
+    "KEY_BUTTON_6": "decrease_volume",
+    "KEY_BUTTON_7": "increase_volume",
 
-    // start
-    "KEY_BUTTON_9": "host:fullscreen",
+    // Share — fullscreen
+    "KEY_BUTTON_8": "host:fullscreen",
 
-    // press left thumbstick
-    "KEY_BUTTON_10": "",
+    // Options — play/pause
+    "KEY_BUTTON_9": "play_pause",
 
-    // press right thumbstick
-    "KEY_BUTTON_11": "",
-
-    // Playstation button
-    "KEY_BUTTON_12": {
+    // PS button — home, or quit if you hold it
+    "KEY_BUTTON_10": {
       "short": "home",
       "long": "exit"
     },
 
-    // Trackpad press
-    "KEY_BUTTON_13": "search",
+    // Thumbstick presses, deliberately unbound
+    "KEY_BUTTON_11": "",
+    "KEY_BUTTON_12": "",
 
-    // left thumbstick axis
+    // Left thumbstick — navigation, same as the D-pad
     "KEY_AXIS_0_UP": "left",
     "KEY_AXIS_0_DOWN": "right",
     "KEY_AXIS_1_UP": "up",
     "KEY_AXIS_1_DOWN": "down",
 
-    // right thumbstick axis
-    "KEY_AXIS_5_UP": "increase_volume",
-    "KEY_AXIS_5_DOWN": "decrease_volume",
-    "KEY_AXIS_2_UP": "decrease_audio_delay",
-    "KEY_AXIS_2_DOWN": "increase_audio_delay"
+    // Right thumbstick vertical — scrolls a page while browsing, and changes the
+    // volume over a film. See the note in dualshock4-usb.json: the array form is
+    // what lets one stick mean both, resolved by context.
+    "KEY_AXIS_4_UP": ["scroll_up", "increase_volume"],
+    "KEY_AXIS_4_DOWN": ["scroll_down", "decrease_volume"],
+
+    // Right thumbstick horizontal — audio delay
+    "KEY_AXIS_3_UP": "decrease_audio_delay",
+    "KEY_AXIS_3_DOWN": "increase_audio_delay"
   }
 }
