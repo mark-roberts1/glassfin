@@ -90,6 +90,62 @@ modules:
         url: https://code.videolan.org/videolan/libplacebo.git
         tag: v7.360.1
 
+  # Build-time data for libdisplay-info below, and nothing else.
+  #
+  # libdisplay-info compiles a table of monitor manufacturer codes out of
+  # `pnp.ids`. Its meson looks for that file through the `hwdata` pkg-config
+  # module and, failing that, falls back to a **hardcoded `/usr/share/hwdata/`**
+  # which a Flatpak build cannot write to and this runtime does not have. So the
+  # dependency being `required: false` upstream does not make it optional — it
+  # only makes the failure later and less clear.
+  #
+  # Rather than build the whole hwdata package, which is some ten megabytes of
+  # PCI and USB identifiers nothing here will ever read, this installs the one
+  # file and writes the pkg-config that points at it. The table ends up compiled
+  # into libdisplay-info, so `/app/share/hwdata` is cleaned up afterwards.
+  - name: hwdata
+    buildsystem: simple
+    build-commands:
+      - install -Dm644 pnp.ids /app/share/hwdata/pnp.ids
+      - install -d /app/lib/pkgconfig
+      - |
+        cat > /app/lib/pkgconfig/hwdata.pc <<'PKGCONFIG'
+        prefix=/app
+        datadir=${prefix}/share
+        pkgdatadir=${datadir}/hwdata
+
+        Name: hwdata
+        Description: Hardware identification and configuration data
+        Version: 0.411
+        PKGCONFIG
+    cleanup:
+      - /share/hwdata
+    sources:
+      - type: git
+        url: https://github.com/vcrhonek/hwdata.git
+        tag: v0.411
+
+  # **Only here to unlock hardware decoding**, which is not obvious from its name.
+  #
+  # The chain, traced through mpv's meson.build rather than guessed at: `vaapi`
+  # requires at least one VAAPI backend; the only one available to a windowless
+  # libmpv is `vaapi-drm`; that requires mpv's `drm` feature; and `drm` requires
+  # both libdrm *and* libdisplay-info. The runtime has libdrm and libva-drm but
+  # not this, so without it `vaapi` cannot be enabled at all and a living-room box
+  # software-decodes 4K.
+  #
+  # It wants hwdata for the PNP vendor table, which the runtime also lacks — but
+  # that dependency is `required: false` upstream and only affects how a monitor's
+  # manufacturer is named, which nothing here reads.
+  - name: libdisplay-info
+    buildsystem: meson
+    config-opts:
+      - -Ddefault_library=shared
+    sources:
+      - type: git
+        url: https://gitlab.freedesktop.org/emersion/libdisplay-info.git
+        tag: '0.2.0'
+
   # libmpv only — no player binary, no manual, no scripting.
   #
   # **No windowing backend either, which is the important line here.** media_kit
@@ -123,6 +179,15 @@ modules:
       - -Dgl=enabled
       - -Dx11=disabled
       - -Dwayland=disabled
+      # **`drm` is enabled for device access, not for its video output.** Nothing
+      # here displays through KMS — the picture goes to a Flutter texture. But
+      # mpv gates `vaapi-drm` behind this feature, and vaapi-drm is the only way
+      # a library with no window of its own can obtain a VADisplay: it opens a
+      # render node directly, with no compositor to attach to. The wayland and
+      # x11 VAAPI backends both want a display connection that media_kit never
+      # gives mpv.
+      - -Ddrm=enabled
+      - -Dvaapi-drm=enabled
       - -Dvaapi=enabled
       - -Dpulse=enabled
       - -Dpipewire=enabled
