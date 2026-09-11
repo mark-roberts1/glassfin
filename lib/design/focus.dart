@@ -212,6 +212,19 @@ class _FocusableState extends State<Focusable> {
       content = Stack(
         // The ring is drawn outside the box, so the stack must not clip it.
         clipBehavior: Clip.none,
+
+        // **Passthrough, not the default loose.** A Stack normally hands its
+        // children *loose* constraints, so a focusable inside a stretched column
+        // shrink-wrapped to its text while the stack itself stayed the full width
+        // its parent demanded — and the ring, positioned against the stack,
+        // stretched with it. The result was a full-width ring around a button a
+        // third as wide, which is what the login screen looked like.
+        //
+        // Passthrough hands on whatever constraints arrived. Tight, and the
+        // content fills them and the ring hugs it; loose, and the content
+        // shrink-wraps and the stack shrinks with it. Both are what the caller
+        // asked for, which is the thing the default got wrong.
+        fit: StackFit.passthrough,
         children: [
           content,
           Positioned(
