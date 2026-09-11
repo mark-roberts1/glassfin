@@ -92,11 +92,24 @@ modules:
 
   # libmpv only — no player binary, no manual, no scripting.
   #
-  # The enabled options are the ones this application actually depends on, and
-  # they are hard-enabled rather than left on auto **so that a missing dependency
-  # is a loud build failure instead of a quiet loss of capability.** Silently
-  # losing vaapi would mean software-decoding 4K on a living-room box, and the
-  # place to find that out is here, not on the sofa.
+  # **No windowing backend either, which is the important line here.** media_kit
+  # drives mpv through `mpv_render_context_create` with the OpenGL render API: it
+  # hands mpv a GL context and receives a texture, which Flutter then composites
+  # like any other widget. mpv never opens a window of its own, so its X11 and
+  # Wayland video outputs are dead weight — and `plain-gl` is the option mpv
+  # provides for precisely this case, OpenGL with no window system behind it.
+  #
+  # That is not a guess about what the library *might* do. Building with
+  # `-Dx11=enabled` failed on a missing `xpresent`, which is how this came to
+  # light: the runtime has no libXpresent, and the honest fix was not to add one
+  # but to stop asking for a subsystem that is never reached.
+  #
+  # What remains enabled is what this application genuinely depends on, and it is
+  # hard-enabled rather than left on auto **so that a missing dependency is a loud
+  # build failure instead of a quiet loss of capability.** Silently losing vaapi
+  # would mean software-decoding 4K on a living-room box, and the place to find
+  # that out is a build log. `egl` is deliberately *not* in that list: the GL
+  # context comes from Flutter, so mpv needs no EGL platform of its own.
   #
   # The disabled list is everything mpv offers that a Jellyfin client never
   # touches. sdl2-gamepad included: Glassfin reads the pad itself through SDL and
@@ -106,10 +119,10 @@ modules:
     config-opts:
       - -Dlibmpv=true
       - -Dcplayer=false
+      - -Dplain-gl=enabled
       - -Dgl=enabled
-      - -Degl=enabled
-      - -Dwayland=enabled
-      - -Dx11=enabled
+      - -Dx11=disabled
+      - -Dwayland=disabled
       - -Dvaapi=enabled
       - -Dpulse=enabled
       - -Dpipewire=enabled
