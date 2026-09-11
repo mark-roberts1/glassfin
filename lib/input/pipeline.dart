@@ -140,9 +140,22 @@ class InputPipeline {
     });
   }
 
+  /// Same reasoning as the gamepad poller: an exception escaping a timer callback
+  /// leaves the timer unscheduled, so one throw from a consumer would silently end
+  /// autorepeat for the rest of the session. A dropped repeat is a button that
+  /// needs pressing again; a dead timer is a D-pad that stops scrolling.
   void _emitRepeat() {
     if (_repeatActions.isEmpty) return;
-    onActions(_repeatActions);
+    try {
+      onActions(_repeatActions);
+    } on Object catch (error, stack) {
+      // Rethrown in a microtask rather than logged: the error still reaches
+      // whatever handles uncaught errors, with its stack intact, but it does so
+      // after this callback has returned normally — so the timer survives. Keeps
+      // this file free of any Flutter import, which is what lets it be tested
+      // without a binding.
+      scheduleMicrotask(() => Error.throwWithStackTrace(error, stack));
+    }
   }
 
   void _cancelRepeat() {

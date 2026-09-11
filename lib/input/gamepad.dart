@@ -314,7 +314,27 @@ class Gamepads {
 
   String _nameFor(int which) => _joysticks[which]?.$2 ?? 'unknown joystick';
 
+  /// One tick of the poll loop.
+  ///
+  /// **Nothing a consumer does may escape into the timer.** An exception thrown
+  /// here leaves the periodic timer unscheduled, so a single bad event
+  /// permanently kills the pad while the keyboard carries on — which reads as "the
+  /// controller stopped working" with nothing to connect it to the error that
+  /// caused it. That happened: a stale focus node threw inside the traversal
+  /// policy and took the whole poller with it.
+  ///
+  /// Reported and then dropped, because the alternative is worse. The queue is
+  /// drained again in 50ms regardless.
   void _drain() {
+    try {
+      _pollOnce();
+    } on Object catch (error, stack) {
+      debugPrint('input: dropped a gamepad event — $error');
+      if (kDebugMode) debugPrintStack(stackTrace: stack);
+    }
+  }
+
+  void _pollOnce() {
     final sdl = _sdl;
     final event = _event;
     if (sdl == null || event == null) return;

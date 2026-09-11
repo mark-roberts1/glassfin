@@ -129,9 +129,23 @@ class GlassfinTraversalPolicy extends FocusTraversalPolicy {
     ).where((node) => node != currentNode).toList();
   }
 
-  /// A node's global rectangle, or `null` if it is not laid out.
+  /// A node's global rectangle, or `null` if it has no position to report.
+  ///
+  /// **The `mounted` check is load-bearing, not defensive.** A focus node can
+  /// outlive its element by a few milliseconds — the element is deactivated and
+  /// unmounted at the end of a frame, and the node leaves the scope's descendants
+  /// after that. `findRenderObject()` on an inactive element does not return null,
+  /// it *throws*, so the guards below never got the chance to.
+  ///
+  /// That window only began to matter in Phase 6. A key event is delivered during
+  /// Flutter's input phase, when the tree is consistent; a gamepad arrives on a
+  /// 50ms poll and a held direction autorepeats every 60ms, so it lands in the
+  /// middle of a screen transition as a matter of routine rather than as a race.
   Rect? _rectOf(FocusNode node) {
-    final renderObject = node.context?.findRenderObject();
+    final context = node.context;
+    if (context == null || !context.mounted) return null;
+
+    final renderObject = context.findRenderObject();
     if (renderObject is! RenderBox ||
         !renderObject.attached ||
         !renderObject.hasSize) {
