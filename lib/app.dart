@@ -206,7 +206,7 @@ class _GlassfinAppState extends State<GlassfinApp> with WidgetsBindingObserver {
       transportGroup,
       transportTopGroup,
       transportScrubGroup,
-      'skip',
+      skipGroup,
     };
     if (group != null && inPlayer.contains(group)) return;
 

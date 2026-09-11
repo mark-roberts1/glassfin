@@ -95,11 +95,14 @@ class GlassfinTraversalPolicy extends FocusTraversalPolicy {
 
     final winnerInfo = _registry.infoFor(winner);
     final group = winnerInfo?.group;
-    if (group == null || winnerInfo!.enter != GroupEntry.first) return winner;
+    if (group == null) return winner;
     if (_registry.infoFor(from)?.group == group) return winner;
 
-    final nodes = _registry.nodesIn(group);
-    return nodes.isEmpty ? winner : nodes.first;
+    return switch (winnerInfo!.enter) {
+      GroupEntry.nearest => winner,
+      GroupEntry.first => _registry.nodesIn(group).firstOrNull ?? winner,
+      GroupEntry.primary => _registry.primaryIn(group) ?? winner,
+    };
   }
 
   void _focus(FocusNode node) {

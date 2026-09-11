@@ -26,6 +26,7 @@ import '../design/tokens.dart';
 import '../format.dart';
 import '../jellyfin/labels.dart';
 import '../jellyfin/models.dart';
+import '../nav/registry.dart' show GroupEntry;
 import '../playback/controller.dart';
 
 /// The control row. Focus inside it moves between buttons.
@@ -40,6 +41,15 @@ const String transportTopGroup = 'transport-top';
 /// and right as a seek unless focus is on an actual button, so the scrubber
 /// behaves like the slider it looks like while the row behaves like a toolbar.
 const String transportScrubGroup = 'transport-scrub';
+
+/// The skip offer, which is drawn by the player rather than by the transport but
+/// navigates as part of it.
+///
+/// Named here beside the others because the router has to know all four group
+/// names to tell "focus is on something over the film" from "focus is on a screen
+/// the viewer cannot see" — and a string literal in three files is how one of
+/// them quietly stops matching.
+const String skipGroup = 'skip';
 
 /// Big enough to hit from three metres. The reference draws these at about 24px
 /// for a mouse; this is the same mark at a viewing distance.
@@ -454,7 +464,7 @@ class _Volume extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final muted = playback.volume <= 0;
+    final muted = playback.muted;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -463,11 +473,17 @@ class _Volume extends StatelessWidget {
           icon: muted ? Icons.volume_off : Icons.volume_up,
           semantic: muted ? 'Unmute' : 'Volume',
           group: transportGroup,
-          // Wraps to zero at the top, so one button covers the whole range from
-          // a remote with no dedicated volume keys.
-          onSelect: () => playback.setVolume(
-            playback.volume >= 100 ? 0 : playback.volume + _step,
-          ),
+          // Muted, this unmutes to the level it left rather than stepping up
+          // from silence — the same thing a pad's Square button does, so the two
+          // routes to the same control agree.
+          //
+          // Otherwise it wraps to zero at the top, so one button still covers the
+          // whole range from a remote with no dedicated volume keys.
+          onSelect: () => muted
+              ? playback.toggleMute()
+              : playback.setVolume(
+                  playback.volume >= 100 ? 0 : playback.volume + _step,
+                ),
         ),
         _VolumeBar(level: playback.volume, onSet: playback.setVolume),
         SizedBox(width: Metrics.rem(0.6)),
@@ -552,6 +568,16 @@ class _IconButton extends StatelessWidget {
       visual: FocusVisual.overVideoControl,
       borderRadius: Radii.pill,
       enabled: enabled,
+      // **Arriving from above lands on play/pause, not on the nearest column.**
+      // The scrub bar above spans the whole width, so the nearest column is the
+      // middle of the screen — and this row is split left and right by a
+      // `Spacer`, so the middle of the screen is a gap. The geometric winner was
+      // the captions button, which is correct arithmetic and the wrong answer.
+      //
+      // `large` already marks the one control anyone reaches for without
+      // looking, so it is the same fact twice rather than a second flag.
+      enter: GroupEntry.primary,
+      priority: large ? 1 : 0,
       onSelect: onSelect,
       // No Semantics wrapper here. One inside the focus ring's Stack tripped
       // `!semantics.parentDataDirty` on a window resize, and a screen-reader

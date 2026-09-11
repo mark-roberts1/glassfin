@@ -16,6 +16,19 @@ enum GroupEntry {
   /// the clearest case, where `first` would mean landing on `A` every time you
   /// pressed Up from Done.
   first,
+
+  /// Land on the group's highest-[FocusableInfo.priority] element.
+  ///
+  /// For a row entered from something that **has no column to keep** — the
+  /// transport's scrub bar spans the whole width, so "the nearest column" is the
+  /// middle of the screen, which in a row that is split left and right by a
+  /// `Spacer` is a gap. Pressing Down off the scrubber landed on whichever side's
+  /// innermost button happened to be closer to the centre, which was the captions
+  /// button: geometrically correct and obviously wrong.
+  ///
+  /// Distinct from [first], which would mean "Previous episode" here. A transport
+  /// has an obvious destination and it is play/pause.
+  primary,
 }
 
 /// What the navigation layer knows about one focusable.
@@ -140,6 +153,24 @@ class NavRegistry {
     if (nodes.isEmpty) return false;
     nodes.first.requestFocus();
     return true;
+  }
+
+  /// The highest-priority usable element of [group], for [GroupEntry.primary].
+  ///
+  /// Ties break on registration order, so a group where nobody claims priority
+  /// behaves as [GroupEntry.first] rather than arbitrarily.
+  FocusNode? primaryIn(String group) {
+    FocusNode? best;
+    FocusableInfo? bestInfo;
+    for (final node in nodesIn(group)) {
+      final info = infoFor(node);
+      if (info == null) continue;
+      if (bestInfo == null || info.priority > bestInfo.priority) {
+        best = node;
+        bestInfo = info;
+      }
+    }
+    return best;
   }
 
   /// Highest priority wins, ties broken by registration order.
