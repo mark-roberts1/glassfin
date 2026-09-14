@@ -55,6 +55,15 @@ dependencies:
   # Only for the string and allocation helpers; dart:ffi does the rest.
   ffi: ^2.1.0
 
+dependency_overrides:
+  # Vendored so its Linux plugin can be patched: upstream 2.0.1 only finds
+  # Flutter's EGL display when a context happens to be current on the GTK main
+  # thread, which is never true under X11 — the session Steam's Game Mode gives
+  # a Flatpak — and it then silently renders every frame in software. The
+  # upstream copy is committed unmodified; the patch is its own commit.
+  media_kit_video:
+    path: third_party/media_kit_video
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
