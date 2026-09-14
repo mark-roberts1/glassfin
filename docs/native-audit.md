@@ -23,10 +23,19 @@ the reasons behind each toggle are documented nowhere upstream.
 ```
 Name:                             'Jellyfin Desktop'   (we override to 'Glassfin')
 MaxStaticBitrate:                 1000000000           // 1 Gbps — i.e. never bitrate-limit direct play
+MaxStreamingBitrate:              1000000000           // added in the port — see below
 MusicStreamingTranscodingBitrate: 1280000
 TimelineOffsetSeconds:            5
 ResponseProfiles / ContainerProfiles: []
 ```
+
+**`MaxStreamingBitrate` is not in `nativeshell.js`, and leaving it out was a bug.** In JMP,
+jellyfin-web sent it with every `PlaybackInfo` request from its Quality setting, so the profile
+never needed it. This client sends no such parameter, and without one the server uses its own
+`DeviceProfile` default of 8 Mbps — which is the limit the direct-play decision actually checks,
+not `MaxStaticBitrate`. The result was `TranscodeReasons=ContainerBitrateExceedsLimit` on every
+1080p file above 8 Mbps: re-encoded to 7.6 Mbps H.264 with stereo AAC/AC-3, while lower-bitrate
+files in the same codecs direct-played. Verified against the live server, 2026-09-14.
 
 ### DirectPlayProfiles — deliberately unconstrained
 

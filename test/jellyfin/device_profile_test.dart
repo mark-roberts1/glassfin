@@ -35,6 +35,16 @@ void main() {
       expect(video.keys, ['Type']);
     });
 
+    test('is never bitrate-limited, in either of the two bitrate fields', () {
+      // MaxStreamingBitrate is the one the server's direct-play decision reads.
+      // Omitted, Jellyfin assumes 8 Mbps and transcodes any 1080p file above
+      // it with `ContainerBitrateExceedsLimit`, which is what this guards.
+      final profile = profileFor();
+
+      expect(profile['MaxStaticBitrate'], 1000000000);
+      expect(profile['MaxStreamingBitrate'], 1000000000);
+    });
+
     test('drops video entirely when everything is forced to transcode', () {
       final profile = profileFor(
         video: defaults.copyWith(alwaysForceTranscode: true),
