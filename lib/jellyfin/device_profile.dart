@@ -19,6 +19,18 @@ import '../settings/video_settings.dart';
 /// would have played perfectly.
 const int _maxStaticBitrate = 1000000000;
 
+/// **The one that actually decides direct play, and the one that was missing.**
+///
+/// Despite the name, Jellyfin checks a file's bitrate against *this* when
+/// choosing between direct play and transcode, not [_maxStaticBitrate]. Left
+/// out, the server fills in its own `DeviceProfile` default of 8 Mbps and
+/// answers `ContainerBitrateExceedsLimit` for nearly every 1080p file: a 10 Mbps
+/// web release or a 40 Mbps remux gets re-encoded to 7.6 Mbps H.264 with
+/// stereo audio, while a 5 Mbps file direct-plays, so it looks like the
+/// codecs are the problem. jellyfin-web sends it per request; this client
+/// has no Quality setting, so it lives here.
+const int _maxStreamingBitrate = 1000000000;
+
 const int _musicStreamingTranscodingBitrate = 1280000;
 
 /// How far ahead of the reported position the server should assume the client
@@ -32,6 +44,7 @@ Map<String, Object?> buildDeviceProfile({
 }) => {
   'Name': 'Glassfin',
   'MaxStaticBitrate': _maxStaticBitrate,
+  'MaxStreamingBitrate': _maxStreamingBitrate,
   'MusicStreamingTranscodingBitrate': _musicStreamingTranscodingBitrate,
   'TimelineOffsetSeconds': _timelineOffsetSeconds,
   'TranscodingProfiles': _transcodingProfiles(video, audio),
