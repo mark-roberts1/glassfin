@@ -62,7 +62,15 @@ class PlayerOverlay extends StatefulWidget {
 }
 
 class _PlayerOverlayState extends State<PlayerOverlay> {
-  late final VideoController _video = VideoController(widget.playback.player);
+  /// **The `hwdec` here is not redundant with `configureMpv`.** Left out,
+  /// media_kit sets `hwdec=auto` itself when the controller is created, which
+  /// lands after — and silently replaces — the viewer's decoding setting.
+  late final VideoController _video = VideoController(
+    widget.playback.player,
+    configuration: VideoControllerConfiguration(
+      hwdec: widget.playback.video.hardwareDecoding.mpvValue,
+    ),
+  );
 
   /// Which offer the prompt was last focused for.
   ///

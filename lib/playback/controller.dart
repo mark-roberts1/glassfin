@@ -137,6 +137,10 @@ class PlaybackController extends ChangeNotifier {
 
   Player get player => _player;
 
+  /// Read by the video widget, which has to be given the same `hwdec` that
+  /// [configureMpv] sets — see `PlayerOverlay`.
+  VideoSettings get video => _video;
+
   // ---- Observable state -----------------------------------------------------
 
   Item? _item;
@@ -567,6 +571,8 @@ class PlaybackController extends ChangeNotifier {
       unawaited(_reportProgress());
     });
 
+    unawaited(_logDecodingStats(_session));
+
     if (report) {
       try {
         await _client.reportStart(item.id, info.playSessionId, ticks);
@@ -580,6 +586,42 @@ class PlaybackController extends ChangeNotifier {
 
   int? _indexOf(TrackChoice choice) =>
       choice is _IndexedTrack ? choice.value : null;
+
+  /// Prints what mpv is actually doing, a few seconds into a film.
+  ///
+  /// Stutter has several unrelated causes — software decoding, dropped frames
+  /// at output, a server transcode that cannot keep up — and from the sofa they
+  /// all look the same. These numbers tell them apart. Delayed so the drop
+  /// counters have something to count.
+  Future<void> _logDecodingStats(_Session? session) async {
+    await Future<void>.delayed(const Duration(seconds: 10));
+    final native = _native;
+    if (native == null || session == null || _session != session) return;
+
+    const properties = [
+      'hwdec',
+      'hwdec-current',
+      'video-codec',
+      'width',
+      'height',
+      'container-fps',
+      'estimated-vf-fps',
+      'display-fps',
+      'frame-drop-count',
+      'decoder-frame-drop-count',
+      'video-sync',
+    ];
+    final values = <String>[];
+    for (final name in properties) {
+      try {
+        values.add('$name=${await native.getProperty(name)}');
+      } catch (_) {
+        values.add('$name=?');
+      }
+    }
+    final delivery = session.source.isTranscoding ? 'transcode' : 'direct';
+    debugPrint('glassfin: playback [$delivery] ${values.join(' ')}');
+  }
 
   void _attachPlayerStreams() {
     _playerSubscriptions.addAll([
