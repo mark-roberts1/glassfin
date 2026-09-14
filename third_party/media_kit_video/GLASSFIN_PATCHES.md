@@ -27,11 +27,21 @@ unchanged from there. The context save/restore in both files releases mpv's cont
 X11 that call would reach GTK's GLX context. Glassfin keeps one `Player` for the session, so this
 only runs at exit.
 
-## Don't block Flutter's raster thread — `linux/texture_gl.cc`
+## Not taken: upstream `main`'s `BLOCK_FOR_TARGET_TIME = 0`
 
-`MPV_RENDER_PARAM_BLOCK_FOR_TARGET_TIME = 0`, taken verbatim from upstream `main`, where it is the
-only difference from 2.0.1 in the Linux sources. Without it `mpv_render_context_render` waits until
-the frame is due, inside Flutter's texture callback.
+Upstream `main` passes `MPV_RENDER_PARAM_BLOCK_FOR_TARGET_TIME = 0` in `texture_gl.cc` — its only
+Linux difference from 2.0.1 — so mpv does not wait for a frame's due time inside Flutter's texture
+callback. It sounds like a free win and it measured as a loss. A real 1080p24 film with audio, 8 s
+(~192 frames), `frame-drop-count` on the development laptop (Intel Iris Xe):
+
+| | Non-blocking (upstream `main`) | Blocking (2.0.1, kept) |
+| --- | --- | --- |
+| X11 | 30 | 16 |
+| Wayland | 1 | 1 |
+
+No gain on Wayland, twice the drops on X11 — and X11 is what Game Mode runs. Don't add it back
+without measuring under `GDK_BACKEND=x11`. Synthetic test clips with no audio track exaggerate the
+difference badly (138 vs 87), so measure with a real film.
 
 ## Updating
 
