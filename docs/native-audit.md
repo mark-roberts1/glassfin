@@ -214,6 +214,24 @@ render context is lazily created on first paint. Initialising before that makes 
 fail with *"No render context set"*, and **mpv silently never retries for that session.** If
 media_kit has an analogous lazy init, expect the same class of bug.
 
+### media_kit's GPU path needed patching for X11
+
+Found on the BC-250, 2026-09-14. **Steam's Game Mode runs a Flatpak under X11**: gamescope sets no
+`WAYLAND_DISPLAY`, so `--socket=fallback-x11` applies. media_kit_video 2.0.1 located Flutter's EGL
+display by asking what was current on the GTK main thread; under X11 GTK's contexts are GLX, so it
+found nothing, logged `EGL display or context is invalid.` then `S/W rendering.`, and pushed every
+frame through the CPU. That was the entire stutter on the box — decoding ran at 14–30× real time.
+
+The fix is a vendored, patched copy in `third_party/media_kit_video/` (see its
+`GLASSFIN_PATCHES.md`): with nothing current, take Flutter's display from GDK's native display, as
+the engine itself does. **After a media_kit upgrade, check the log says `H/W rendering` under
+`GDK_BACKEND=x11`.**
+
+One cost the patch cannot remove: under X11 Flutter's own compositor does not share framebuffers
+(`fl_view_renderer.cc` enables that for Wayland only), so each frame of the *whole window* is read
+back with `glReadPixels` and uploaded again. That scales with screen resolution, not video
+resolution — measure it on a 4K television before trusting it there.
+
 ---
 
 ## 3. The input stack
