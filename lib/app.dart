@@ -743,8 +743,36 @@ class _InputHost extends StatefulWidget {
   State<_InputHost> createState() => _InputHostState();
 }
 
-class _InputHostState extends State<_InputHost> {
+class _InputHostState extends State<_InputHost>
+    with WidgetsBindingObserver, WindowListener {
   late InputEngine _engine;
+
+  /// Window focus, from Flutter's own lifecycle: the Linux embedder reports a
+  /// focused window as `resumed` and an unfocused one as `inactive`. This is what
+  /// stops a pad driving Steam's menu from also driving Glassfin behind it.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _engine.setWindowFocused(
+      state == AppLifecycleState.resumed,
+      reason: 'lifecycle ${state.name}',
+    );
+  }
+
+  /// `window_manager`'s focus events, **logged only** under `GLASSFIN_LOG_INPUT`.
+  ///
+  /// Both come from GTK, but through different paths — the window-state
+  /// `FOCUSED` flag versus focus-in/out events — and it is not known which of
+  /// them gamescope produces. Logging this one beside the lifecycle line shows
+  /// which signal a compositor actually sends, without acting on two.
+  @override
+  void onWindowFocus() {
+    if (logEveryCode) debugPrint('input: window_manager focus');
+  }
+
+  @override
+  void onWindowBlur() {
+    if (logEveryCode) debugPrint('input: window_manager blur');
+  }
 
   /// **Eagerly, not as a `late final` initialiser.** The engine starts the
   /// gamepad poller when it is constructed, and a lazy field is only constructed
@@ -762,6 +790,8 @@ class _InputHostState extends State<_InputHost> {
       // number keys type into it and do nothing otherwise.
       onText: () => widget.textEntry?.insert,
     );
+    WidgetsBinding.instance.addObserver(this);
+    windowManager.addListener(this);
   }
 
   /// Built fresh each time an action fires, from the state of *this* frame.
@@ -784,6 +814,8 @@ class _InputHostState extends State<_InputHost> {
 
   @override
   void dispose() {
+    windowManager.removeListener(this);
+    WidgetsBinding.instance.removeObserver(this);
     _engine.dispose();
     super.dispose();
   }

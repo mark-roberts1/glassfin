@@ -283,6 +283,11 @@ class Gamepads {
     // Lets the pad be read while the window is not focused. On a television there
     // is frequently nothing else to focus, and a pad that only works when the
     // compositor agrees is a pad that looks broken.
+    //
+    // **Reading is not the same as acting.** In Game Mode Steam's menu opens over
+    // Glassfin and is driven by the same pad, so InputEngine's FocusGate drops
+    // those presses while another window has focus — otherwise the X that picks
+    // "Exit game" also picks a card in Glassfin.
     final hint = 'SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS'.toNativeUtf8();
     final one = '1'.toNativeUtf8();
     sdl.setHint(hint, one);
