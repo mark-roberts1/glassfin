@@ -32,11 +32,17 @@ import '../settings/preferences.dart';
 import '../settings/subtitle_appearance.dart';
 import '../settings/video_settings.dart';
 import 'mpv_config.dart';
+import 'playback_log.dart';
 import 'screen_keeper.dart';
 
 /// How often to tell the server where we are. Jellyfin's own clients use ten
 /// seconds, and matching them keeps a shared resume point consistent.
 const Duration progressInterval = Duration(seconds: 10);
+
+/// How often a playing item logs its `glassfin: playback` line after the first.
+/// Often enough that the last one before a film ends covers nearly all of it;
+/// rarely enough that a two-hour film is two dozen lines. See playback_log.dart.
+const Duration playbackLogInterval = Duration(minutes: 5);
 
 /// Below this, treat a resume point as "start from the beginning" — nobody wants
 /// to resume four seconds in.
@@ -227,6 +233,7 @@ class PlaybackController extends ChangeNotifier {
 
   _Session? _session;
   Timer? _progressTimer;
+  Timer? _playbackLogTimer;
   Timer? _chromeTimer;
 
   /// Clears a non-fatal mpv message again. See the error listener.
@@ -452,10 +459,20 @@ class PlaybackController extends ChangeNotifier {
     if (session == null) return;
 
     _progressTimer?.cancel();
+    _playbackLogTimer?.cancel();
+    _playbackLogTimer = null;
     for (final subscription in _playerSubscriptions) {
       await subscription.cancel();
     }
     _playerSubscriptions.clear();
+
+    // Before stopping the player: stopping unloads the file, and mpv's counters
+    // go with it. By now the position listener is gone, so [_position] is where
+    // the play actually ended.
+    await _logPlayback(
+      report ? PlaybackLogPoint.stopped : PlaybackLogPoint.reloaded,
+      session,
+    );
     await _player.stop();
 
     if (report) {
@@ -571,7 +588,15 @@ class PlaybackController extends ChangeNotifier {
       unawaited(_reportProgress());
     });
 
-    unawaited(_logDecodingStats(_session));
+    final loaded = _session;
+    if (loaded != null) {
+      unawaited(_logPlaybackAfterStart(loaded));
+      _playbackLogTimer = Timer.periodic(playbackLogInterval, (_) {
+        if (_session == loaded) {
+          unawaited(_logPlayback(PlaybackLogPoint.playing, loaded));
+        }
+      });
+    }
 
     if (report) {
       try {
@@ -587,40 +612,37 @@ class PlaybackController extends ChangeNotifier {
   int? _indexOf(TrackChoice choice) =>
       choice is _IndexedTrack ? choice.value : null;
 
-  /// Prints what mpv is actually doing, a few seconds into a film.
-  ///
-  /// Stutter has several unrelated causes — software decoding, dropped frames
-  /// at output, a server transcode that cannot keep up — and from the sofa they
-  /// all look the same. These numbers tell them apart. Delayed so the drop
-  /// counters have something to count.
-  Future<void> _logDecodingStats(_Session? session) async {
+  /// The first `glassfin: playback` line, a few seconds in: which render and
+  /// decode path mpv actually chose. Delayed so the drop counters have something
+  /// to count. See playback_log.dart for why the line exists.
+  Future<void> _logPlaybackAfterStart(_Session session) async {
     await Future<void>.delayed(const Duration(seconds: 10));
-    final native = _native;
-    if (native == null || session == null || _session != session) return;
+    if (_session != session) return;
+    await _logPlayback(PlaybackLogPoint.started, session);
+  }
 
-    const properties = [
-      'hwdec',
-      'hwdec-current',
-      'video-codec',
-      'width',
-      'height',
-      'container-fps',
-      'estimated-vf-fps',
-      'display-fps',
-      'frame-drop-count',
-      'decoder-frame-drop-count',
-      'video-sync',
-    ];
-    final values = <String>[];
-    for (final name in properties) {
+  /// Prints one `glassfin: playback` line for [session] at the current position.
+  Future<void> _logPlayback(PlaybackLogPoint point, _Session session) async {
+    final native = _native;
+    if (native == null) return;
+
+    final values = <(String, String?)>[];
+    for (final name in playbackLogProperties) {
       try {
-        values.add('$name=${await native.getProperty(name)}');
+        values.add((name, await native.getProperty(name)));
       } catch (_) {
-        values.add('$name=?');
+        values.add((name, null));
       }
     }
-    final delivery = session.source.isTranscoding ? 'transcode' : 'direct';
-    debugPrint('glassfin: playback [$delivery] ${values.join(' ')}');
+    debugPrint(
+      playbackLogLine(
+        point: point,
+        item: session.item,
+        transcoding: session.source.isTranscoding,
+        position: _position,
+        values: values,
+      ),
+    );
   }
 
   void _attachPlayerStreams() {
@@ -1176,6 +1198,7 @@ class PlaybackController extends ChangeNotifier {
     _chromeTimer?.cancel();
     _noticeTimer?.cancel();
     _progressTimer?.cancel();
+    _playbackLogTimer?.cancel();
     _scanTimer?.cancel();
     for (final subscription in _playerSubscriptions) {
       unawaited(subscription.cancel());
