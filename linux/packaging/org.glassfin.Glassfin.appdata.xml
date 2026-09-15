@@ -68,6 +68,11 @@
     is not carried over. The first Glassfin release note goes here.
   -->
   <releases>
+    <release version="0.2.2" date="2026-09-14">
+      <description>
+        <p>The playback diagnostic line now names what was playing and covers the whole play.</p>
+      </description>
+    </release>
     <release version="0.2.1" date="2026-09-14">
       <description>
         <p>Actually renders video on the GPU when launched from Steam's Game Mode, which 0.2.0 did not.</p>
