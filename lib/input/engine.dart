@@ -15,6 +15,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import 'actions.dart';
+import 'focus_gate.dart';
 import 'gamepad.dart';
 import 'host_commands.dart';
 import 'input_map.dart';
@@ -75,9 +76,35 @@ class InputEngine {
 
   late final InputPipeline _pipeline;
   late final Gamepads _gamepads;
+  final FocusGate _focus = FocusGate();
 
   /// Whether a pad is actually being polled, for the Settings screen to show.
   bool get gamepadsRunning => _gamepads.running;
+
+  /// Tells the engine whether Glassfin's window has focus.
+  ///
+  /// While it does not, pad input is ignored, so a controller operating Steam's
+  /// menu does not also operate Glassfin behind it. See [FocusGate]. [reason] is
+  /// only for the log.
+  ///
+  /// **Always logged**, not only under `GLASSFIN_LOG_INPUT`: whether a given
+  /// compositor reports focus at all is the first thing to know when a pad seems
+  /// muted, or when this protection seems not to work, and it costs a line per
+  /// change.
+  void setWindowFocused(bool focused, {String reason = ''}) {
+    final suffix = reason.isEmpty ? '' : ' ($reason)';
+    if (!_focus.setFocused(focused)) {
+      if (!focused && _focus.focused) {
+        debugPrint(
+          'input: window reported unfocused before ever being focused; '
+          'controller left enabled$suffix',
+        );
+      }
+      return;
+    }
+    if (!focused) _pipeline.reset();
+    debugPrint('input: window focus ${focused ? 'gained' : 'lost'}$suffix');
+  }
 
   /// A physical key press. Returns true if the key was ours.
   ///
@@ -110,9 +137,18 @@ class InputEngine {
     KeyState state, {
     bool synthesiseRepeat = true,
   }) {
+    // The keyboard is never gated: a compositor only delivers keys to the window
+    // that has focus, so there is nothing to leak.
+    final admitted =
+        source == keyboardSource || _focus.admit(source, keycode, state);
+
     if (logEveryCode) {
-      debugPrint('input: $source "$keycode" ${state.name}');
-    } else if (state != KeyState.up &&
+      debugPrint(
+        'input: $source "$keycode" ${state.name}'
+        '${admitted ? '' : ' (ignored: not for this window)'}',
+      );
+    } else if (admitted &&
+        state != KeyState.up &&
         maps.lookUp(source, keycode).isEmpty) {
       // The single most useful line when a button does nothing: it separates
       // "the pad is not reporting" from "the pad is reporting something no map
@@ -121,6 +157,7 @@ class InputEngine {
       // per press that already did nothing.
       debugPrint('input: $source "$keycode" is unmapped');
     }
+    if (!admitted) return;
     _pipeline.receive(source, keycode, state, synthesiseRepeat: synthesiseRepeat);
   }
 

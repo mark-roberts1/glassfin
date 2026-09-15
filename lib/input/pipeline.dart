@@ -164,11 +164,19 @@ class InputPipeline {
     _repeatActions = const [];
   }
 
-  /// Stops the clocks. A pipeline that outlives its timers keeps firing actions
-  /// into a disposed interface.
-  void dispose() {
+  /// Forgets any key in progress **without firing it**: autorepeat stops, and a
+  /// hold being timed is dropped rather than resolved.
+  ///
+  /// For when the keys stop being ours mid-press — another window took focus. A
+  /// release that arrives later, or never, must not then fire a short press that
+  /// was meant for that other window.
+  void reset() {
     _cancelRepeat();
     _pendingHold = null;
     _holdStarted = null;
   }
+
+  /// Stops the clocks. A pipeline that outlives its timers keeps firing actions
+  /// into a disposed interface.
+  void dispose() => reset();
 }
