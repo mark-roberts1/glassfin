@@ -16,7 +16,7 @@ import 'device_profile.dart';
 import 'models.dart';
 
 const String clientName = 'Glassfin';
-const String clientVersion = '0.2.3';
+const String clientVersion = '0.2.4';
 
 /// Thrown for anything the viewer might need told about.
 class JellyfinException implements Exception {
