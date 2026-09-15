@@ -85,6 +85,30 @@ static EGLConfig glassfin_choose_flutter_egl_config(EGLDisplay egl_display) {
   return config;
 }
 
+// Glassfin patch — see GLASSFIN_PATCHES.md.
+//
+// libglvnd lets a thread hold a current context from only one window API at a
+// time. Under X11, once the window has drawn, GTK's GL context (GLX) is current
+// on the main thread, and making mpv's EGL context current there fails with
+// EGL_BAD_ACCESS. So release GTK's context first and put it back afterwards —
+// through GDK rather than glXMakeCurrent, so GDK's own record of what is current
+// on this thread stays true.
+static GdkGLContext* glassfin_release_gdk_gl_context() {
+  GdkGLContext* context = gdk_gl_context_get_current();
+  if (context != NULL) {
+    g_object_ref(context);
+    gdk_gl_context_clear_current();
+  }
+  return context;
+}
+
+static void glassfin_restore_gdk_gl_context(GdkGLContext* context) {
+  if (context != NULL) {
+    gdk_gl_context_make_current(context);
+    g_object_unref(context);
+  }
+}
+
 static void video_output_dispose(GObject* object) {
   VideoOutput* self = VIDEO_OUTPUT(object);
   self->destroyed = TRUE;
@@ -96,6 +120,10 @@ static void video_output_dispose(GObject* object) {
 
   // H/W
   if (self->texture_gl) {
+    // Glassfin patch: held across the whole block, which also disposes
+    // texture_gl and so makes mpv's context current more than once.
+    GdkGLContext* gdk_context = glassfin_release_gdk_gl_context();
+
     fl_texture_registrar_unregister_texture(self->texture_registrar,
                                             FL_TEXTURE(self->texture_gl));
     
@@ -130,6 +158,8 @@ static void video_output_dispose(GObject* object) {
     }
     
     g_object_unref(self->texture_gl);
+
+    glassfin_restore_gdk_gl_context(gdk_context);
   }
   // S/W
   if (self->texture_sw) {
@@ -206,6 +236,12 @@ VideoOutput* video_output_new(FlTextureRegistrar* texture_registrar,
     EGLDisplay egl_display = flutter_context_current
                                  ? flutter_display
                                  : glassfin_get_flutter_egl_display();
+
+    // Glassfin patch: without this the display lookup above succeeds and the
+    // eglMakeCurrent below fails with EGL_BAD_ACCESS whenever GTK's GLX context
+    // is current, which in the app is always. Restored at the end of this block.
+    GdkGLContext* gdk_context =
+        flutter_context_current ? NULL : glassfin_release_gdk_gl_context();
 
     if (egl_display != EGL_NO_DISPLAY) {
       self->egl_display = egl_display;
@@ -322,6 +358,8 @@ VideoOutput* video_output_new(FlTextureRegistrar* texture_registrar,
     } else {
       g_printerr("media_kit: VideoOutput: EGL display or context is invalid.\n");
     }
+
+    glassfin_restore_gdk_gl_context(gdk_context);
   }
 #ifdef MPV_RENDER_API_TYPE_SW
   if (!hardware_acceleration_supported) {

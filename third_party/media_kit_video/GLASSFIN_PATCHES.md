@@ -27,6 +27,33 @@ unchanged from there. The context save/restore in both files releases mpv's cont
 X11 that call would reach GTK's GLX context. Glassfin keeps one `Player` for the session, so this
 only runs at exit.
 
+## Release GTK's GL context first — `linux/video_output.cc`
+
+**The patch above was not enough on its own, and shipped that way in 0.2.0.** It found the display,
+created the context, and then `eglMakeCurrent` failed with `0x3002` (`EGL_BAD_ACCESS`) and the
+plugin fell back to S/W rendering anyway:
+
+```
+media_kit: VideoOutput: No EGL context current; using Flutter's display from GDK.
+media_kit: VideoOutput: Failed to make isolated EGL context current. Error: 0x3002
+media_kit: VideoOutput: S/W rendering.
+```
+
+libglvnd allows a thread one window API's current context at a time — its `libEGL` reports
+`Another window API already has a current context` as `EGL_BAD_ACCESS`. Under X11, once the window
+has drawn, GTK's GL context is GLX and current on the main thread. So around every main-thread use
+of mpv's context — creation in `video_output_new`, teardown in `video_output_dispose` (which also
+disposes `TextureGL`) — the plugin now takes GDK's current context, clears it, and makes it current
+again afterwards. That goes through `gdk_gl_context_clear_current` / `_make_current` rather than
+`glXMakeCurrent`, so GDK's per-thread record of the current context stays accurate. Frame rendering
+in `texture_gl_populate_texture` runs on Flutter's raster thread, where GTK has no context, and is
+untouched.
+
+**Test with the controller created late.** The 0.2.0 patch passed on the development machine only
+because the test created the `VideoController` before the window's first frame, when GTK had nothing
+current yet. The app creates it when a film starts. A test that does not do the same does not test
+this.
+
 ## Not taken: upstream `main`'s `BLOCK_FOR_TARGET_TIME = 0`
 
 Upstream `main` passes `MPV_RENDER_PARAM_BLOCK_FOR_TARGET_TIME = 0` in `texture_gl.cc` — its only
