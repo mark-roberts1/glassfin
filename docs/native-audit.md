@@ -224,8 +224,11 @@ frame through the CPU. That was the entire stutter on the box — decoding ran a
 
 The fix is a vendored, patched copy in `third_party/media_kit_video/` (see its
 `GLASSFIN_PATCHES.md`): with nothing current, take Flutter's display from GDK's native display, as
-the engine itself does. **After a media_kit upgrade, check the log says `H/W rendering` under
-`GDK_BACKEND=x11`.**
+the engine itself does — and release GTK's current GL context before making mpv's current, because
+libglvnd refuses an EGL context on a thread where a GLX one is current (`EGL_BAD_ACCESS`, 0x3002).
+0.2.0 shipped with only the first half. **After a media_kit upgrade, check the log says
+`H/W rendering` under `GDK_BACKEND=x11` with the player created after the window has drawn** — a
+test that creates it at startup passes without exercising the failure.
 
 One cost the patch cannot remove: under X11 Flutter's own compositor does not share framebuffers
 (`fl_view_renderer.cc` enables that for Wayland only), so each frame of the *whole window* is read

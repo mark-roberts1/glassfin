@@ -68,6 +68,11 @@
     is not carried over. The first Glassfin release note goes here.
   -->
   <releases>
+    <release version="0.2.1" date="2026-09-14">
+      <description>
+        <p>Actually renders video on the GPU when launched from Steam's Game Mode, which 0.2.0 did not.</p>
+      </description>
+    </release>
     <release version="0.2.0" date="2026-09-14">
       <description>
         <p>Smooth playback when launched from Steam's Game Mode, and films above 8 Mbps no longer transcoded.</p>
