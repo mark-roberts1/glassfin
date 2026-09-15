@@ -68,6 +68,11 @@
     is not carried over. The first Glassfin release note goes here.
   -->
   <releases>
+    <release version="0.2.4" date="2026-09-15">
+      <description>
+        <p>In Steam's Game Mode, the controller is ignored while Steam's menu is open, which 0.2.3 did not manage.</p>
+      </description>
+    </release>
     <release version="0.2.3" date="2026-09-14">
       <description>
         <p>A controller operating Steam's menu no longer also operates Glassfin behind it.</p>
