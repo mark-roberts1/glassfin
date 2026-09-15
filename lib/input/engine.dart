@@ -9,6 +9,7 @@
 /// exactly one place.
 library;
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -17,6 +18,7 @@ import 'package:flutter/services.dart';
 import 'actions.dart';
 import 'focus_gate.dart';
 import 'gamepad.dart';
+import 'gamescope_focus.dart';
 import 'host_commands.dart';
 import 'input_map.dart';
 import 'keyboard.dart';
@@ -52,6 +54,19 @@ class InputEngine {
     // A machine with no SDL, or no pad, is a normal machine. The keyboard is
     // unaffected either way, so this is never worth failing over.
     _gamepads.start();
+
+    // Under gamescope, the only way to know Steam's menu has the pad. Anywhere
+    // else it reports itself unavailable and stops.
+    _gamescope = GamescopeFocus(
+      onChange: (focused, detail) =>
+          _setFocused(focused, source: 'gamescope', reason: detail),
+      onProperties: logEveryCode
+          ? (focusedApp, baseApp) => debugPrint(
+              'input: gamescope focused app $focusedApp, on screen $baseApp',
+            )
+          : null,
+    );
+    unawaited(_gamescope.start());
   }
 
   final InputMaps maps;
@@ -76,6 +91,7 @@ class InputEngine {
 
   late final InputPipeline _pipeline;
   late final Gamepads _gamepads;
+  late final GamescopeFocus _gamescope;
   final FocusGate _focus = FocusGate();
 
   /// Whether a pad is actually being polled, for the Settings screen to show.
@@ -83,27 +99,37 @@ class InputEngine {
 
   /// Tells the engine whether Glassfin's window has focus.
   ///
-  /// While it does not, pad input is ignored, so a controller operating Steam's
-  /// menu does not also operate Glassfin behind it. See [FocusGate]. [reason] is
-  /// only for the log.
-  ///
+  /// While it does not, pad input is ignored, so a controller operating another
+  /// window does not also operate Glassfin behind it. See [FocusGate]. [reason]
+  /// is only for the log. Under gamescope this never fires for Steam's menu;
+  /// [GamescopeFocus] covers that case.
+  void setWindowFocused(bool focused, {String reason = ''}) =>
+      _setFocused(focused, source: 'window', reason: reason);
+
   /// **Always logged**, not only under `GLASSFIN_LOG_INPUT`: whether a given
-  /// compositor reports focus at all is the first thing to know when a pad seems
+  /// session reports focus at all is the first thing to know when a pad seems
   /// muted, or when this protection seems not to work, and it costs a line per
   /// change.
-  void setWindowFocused(bool focused, {String reason = ''}) {
+  void _setFocused(
+    bool focused, {
+    required String source,
+    required String reason,
+  }) {
     final suffix = reason.isEmpty ? '' : ' ($reason)';
-    if (!_focus.setFocused(focused)) {
-      if (!focused && _focus.focused) {
+    if (!_focus.setFocused(focused, source: source)) {
+      if (!focused && !_focus.hasSeenFocus(source)) {
         debugPrint(
-          'input: window reported unfocused before ever being focused; '
+          'input: $source reported unfocused before ever being focused; '
           'controller left enabled$suffix',
         );
       }
       return;
     }
-    if (!focused) _pipeline.reset();
-    debugPrint('input: window focus ${focused ? 'gained' : 'lost'}$suffix');
+    if (!_focus.focused) _pipeline.reset();
+    debugPrint(
+      'input: ${_focus.focused ? 'controller admitted' : 'controller ignored'}'
+      ' — $source focus ${focused ? 'gained' : 'lost'}$suffix',
+    );
   }
 
   /// A physical key press. Returns true if the key was ours.
@@ -196,6 +222,7 @@ class InputEngine {
   }
 
   void dispose() {
+    _gamescope.stop();
     _gamepads.stop();
     _pipeline.dispose();
   }

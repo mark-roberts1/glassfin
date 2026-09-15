@@ -748,8 +748,10 @@ class _InputHostState extends State<_InputHost>
   late InputEngine _engine;
 
   /// Window focus, from Flutter's own lifecycle: the Linux embedder reports a
-  /// focused window as `resumed` and an unfocused one as `inactive`. This is what
-  /// stops a pad driving Steam's menu from also driving Glassfin behind it.
+  /// focused window as `resumed` and an unfocused one as `inactive`. On a desktop
+  /// this stops a pad driving another window from also driving Glassfin. Under
+  /// gamescope the window is never told about Steam's menu, and the engine's
+  /// `GamescopeFocus` watcher covers that instead.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     _engine.setWindowFocused(
