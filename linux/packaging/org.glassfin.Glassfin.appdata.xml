@@ -68,6 +68,11 @@
     is not carried over. The first Glassfin release note goes here.
   -->
   <releases>
+    <release version="0.2.3" date="2026-09-14">
+      <description>
+        <p>A controller operating Steam's menu no longer also operates Glassfin behind it.</p>
+      </description>
+    </release>
     <release version="0.2.2" date="2026-09-14">
       <description>
         <p>The playback diagnostic line now names what was playing and covers the whole play.</p>
