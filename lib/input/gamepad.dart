@@ -286,8 +286,9 @@ class Gamepads {
     //
     // **Reading is not the same as acting.** In Game Mode Steam's menu opens over
     // Glassfin and is driven by the same pad, so InputEngine's FocusGate drops
-    // those presses while another window has focus — otherwise the X that picks
-    // "Exit game" also picks a card in Glassfin.
+    // those presses while something else has input — otherwise the X that picks
+    // "Exit game" also picks a card in Glassfin. Under gamescope that signal comes
+    // from GamescopeFocus, because the window itself is never told.
     final hint = 'SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS'.toNativeUtf8();
     final one = '1'.toNativeUtf8();
     sdl.setHint(hint, one);

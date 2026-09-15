@@ -93,6 +93,39 @@ void main() {
       expect(gate.admit(_pad, 'KEY_HAT_DOWN', KeyState.down), isTrue);
     });
 
+    test('mutes while any source that has seen focus reports it lost', () {
+      // Under gamescope the window stays focused while Steam's menu has input.
+      final gate = FocusGate()
+        ..setFocused(true)
+        ..setFocused(true, source: 'gamescope');
+
+      expect(gate.setFocused(false, source: 'gamescope'), isTrue);
+      expect(gate.focused, isFalse);
+      expect(gate.admit(_pad, 'KEY_BUTTON_0', KeyState.down), isFalse);
+
+      expect(gate.setFocused(true, source: 'gamescope'), isTrue);
+      expect(gate.focused, isTrue);
+    });
+
+    test('stays muted until every source has focus back', () {
+      final gate = FocusGate()
+        ..setFocused(true)
+        ..setFocused(true, source: 'gamescope')
+        ..setFocused(false)
+        ..setFocused(false, source: 'gamescope');
+
+      expect(gate.setFocused(true, source: 'gamescope'), isFalse);
+      expect(gate.focused, isFalse, reason: 'the window is still unfocused');
+      expect(gate.setFocused(true), isTrue);
+    });
+
+    test('a source that has never seen focus cannot mute another source', () {
+      final gate = FocusGate()..setFocused(true);
+      expect(gate.setFocused(false, source: 'gamescope'), isFalse);
+      expect(gate.hasSeenFocus('gamescope'), isFalse);
+      expect(gate.focused, isTrue);
+    });
+
     test('tracks the same code on two pads separately', () {
       final gate = FocusGate()
         ..setFocused(true)

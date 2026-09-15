@@ -7,6 +7,11 @@
 /// "Exit game" selected the first Continue Watching card, so an episode started
 /// playing as the app closed. Confirmed on the BC-250 with input logging.
 ///
+/// **Focus has more than one source.** The window's own focus is what a desktop
+/// compositor reports; under gamescope the window never hears about Steam's
+/// menu, and the signal comes from gamescope instead (see `GamescopeFocus`).
+/// The pad is admitted only while no source says another window has input.
+///
 /// Pure, so the rules can be tested without SDL or a window. The keyboard never
 /// comes through here — a compositor only sends keys to the focused window.
 library;
@@ -16,13 +21,16 @@ import 'pipeline.dart';
 class FocusGate {
   bool _focused = true;
 
-  /// Whether the window has ever been reported focused.
+  /// The latest report from each source.
+  final Map<String, bool> _reports = {};
+
+  /// Sources that have ever reported focus.
   ///
-  /// **No muting until it has.** A session that never reports focus at all
-  /// would otherwise start Glassfin "unfocused" and leave the pad dead from
+  /// **No source mutes until it has.** A session that never reports focus at
+  /// all would otherwise start Glassfin "unfocused" and leave the pad dead from
   /// launch — on a television, indistinguishable from a broken controller. That
   /// is a far worse failure than the leak this class exists to stop.
-  bool _seenFocus = false;
+  final Set<String> _seenFocus = {};
 
   /// Keys currently held, tracked whether or not they are admitted, so that a
   /// press which straddles a focus change can be recognised afterwards.
@@ -35,11 +43,18 @@ class FocusGate {
   /// Whether pad input is currently admitted.
   bool get focused => _focused;
 
-  /// Records a focus report from the window. Returns true when the gate
-  /// actually changed state, which is when anything held needs dropping.
-  bool setFocused(bool focused) {
-    if (focused) _seenFocus = true;
-    final effective = focused || !_seenFocus;
+  /// Whether [source] has ever reported focus, and so is able to mute the pad.
+  bool hasSeenFocus(String source) => _seenFocus.contains(source);
+
+  /// Records a focus report from [source]. Returns true when the gate actually
+  /// changed state, which is when anything held needs dropping.
+  bool setFocused(bool focused, {String source = 'window'}) {
+    if (focused) _seenFocus.add(source);
+    _reports[source] = focused;
+
+    final effective = _reports.entries.every(
+      (report) => report.value || !_seenFocus.contains(report.key),
+    );
     if (effective == _focused) return false;
 
     _focused = effective;

@@ -330,6 +330,17 @@ the one SDL reports. Verified on hardware: X is `KEY_BUTTON_0`, Circle is `KEY_B
 is a hat, and the sticks are axes 0/1 and 3. When a pad does nothing, the name SDL gives it is the
 first thing to check; it is logged on connect for that reason.
 
+**Background events are read, not acted on.** SDL keeps reporting the pad while Steam's menu is
+open over Glassfin, and the Qt build acted on every one of those presses too — in Game Mode the X
+that confirmed Steam's "Exit game" also started an episode. `lib/input/focus_gate.dart` drops pad
+input while something else has input. On a desktop that comes from the window's focus. **Under
+gamescope the window is never told:** Steam's menu lives on gamescope's other Xwayland server
+(`:0`; games run on `:1`), and gamescope only moves X focus within each server. The signal there is
+`GAMESCOPE_FOCUSED_APP` on `:0`'s root window, which reads Steam's app id (769) while its menu has
+input. `lib/input/gamescope_focus.dart` watches it over Xlib from an isolate; the Flatpak reaches
+`:0` through Xwayland's abstract socket, since it shares the host network namespace. Both signals
+fail open — a source that never reports leaves the pad live.
+
 Still not ported, and tracked as Phase 7: **HDMI-CEC** and **LIRC**. The local socket that was the
 natural bridge for both is also absent. `host:` actions are down to `fullscreen`, `minimize` and
 `quit`/`close` — every other one addressed a subsystem this rebuild deleted.
